@@ -72,7 +72,7 @@ export function TaskRail({
               </h3>
             </div>
 
-            <StatusPill size={size} status={isLocked ? "closed" : task.status} />
+            <StatusPill size={size} status={(isLocked ? "closed" : task.status) as any} />
           </div>
         )
       })}

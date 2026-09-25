@@ -1,0 +1,108 @@
+category,crew_word,imposter_word
+Food,Chai,Coffee
+Food,Maggi,Pasta
+Food,Biryani,Pulao
+Food,Samosa,Kachori
+Food,Pizza,Burger
+Food,Dosa,Uttapam
+Food,Gulab Jamun,Rasgulla
+Food,Paneer,Tofu
+Food,Momo,Dumpling
+Food,Ice Cream,Kulfi
+Food,Mango,Papaya
+Food,Sandwich,Wrap
+Food,Vada Pav,Burger
+Food,Pani Puri,Chaat
+Food,Chocolate,Toffee
+Food,Idli,Dhokla
+Food,Lassi,Milkshake
+Food,Paratha,Roti
+Campus,Hostel,Hotel
+Campus,Library,Bookstore
+Campus,Canteen,Restaurant
+Campus,Professor,Teacher
+Campus,Exam,Quiz
+Campus,Backbench,Frontbench
+Campus,Laboratory,Workshop
+Campus,Attendance,Roll Call
+Campus,Assignment,Homework
+Campus,Hackathon,Coding Contest
+Campus,Placement,Internship
+Campus,Mess,Cafeteria
+Campus,Lecture,Seminar
+Campus,ID Card,Library Card
+Campus,Fest,Concert
+Tech,Robot,Drone
+Tech,Arduino,Raspberry Pi
+Tech,Sensor,Camera
+Tech,Motor,Servo
+Tech,Laptop,Tablet
+Tech,WiFi,Bluetooth
+Tech,Battery,Power Bank
+Tech,Circuit,Wire
+Tech,Python,Java
+Tech,3D Printer,Laser Cutter
+Tech,Charger,Adapter
+Tech,Keyboard,Piano
+Tech,Website,Mobile App
+Tech,Password,PIN
+Tech,Screwdriver,Spanner
+Space,Airlock,Elevator
+Space,Spaceship,Airplane
+Space,Astronaut,Pilot
+Space,Moon,Sun
+Space,Meteor,Comet
+Space,Vent,Chimney
+Space,Emergency,Alarm
+Space,Satellite,Rocket
+Space,Telescope,Binoculars
+Space,Mars,Venus
+Entertainment,Cricket,Baseball
+Entertainment,IPL,World Cup
+Entertainment,Netflix,YouTube
+Entertainment,Bollywood,Hollywood
+Entertainment,Instagram,Snapchat
+Entertainment,Guitar,Violin
+Entertainment,Anime,Cartoon
+Entertainment,Batman,Superman
+Entertainment,Spotify,Radio
+Entertainment,Chess,Ludo
+Entertainment,Football,Rugby
+Entertainment,Badminton,Tennis
+Entertainment,Singer,Rapper
+Everyday,Umbrella,Raincoat
+Everyday,Bicycle,Scooter
+Everyday,Train,Metro
+Everyday,Pen,Pencil
+Everyday,Mirror,Window
+Everyday,Backpack,Suitcase
+Everyday,Sunglasses,Spectacles
+Everyday,Wristwatch,Bracelet
+Everyday,Pillow,Blanket
+Everyday,Ceiling Fan,Air Cooler
+Everyday,Auto Rickshaw,Bus
+Everyday,Sofa,Chair
+Everyday,Candle,Lamp
+Everyday,Toothbrush,Comb
+Everyday,Wallet,Purse
+Nature,Beach,Lake
+Nature,Mountain,Hill
+Nature,Forest,Jungle
+Nature,Desert,Beach
+Nature,Tiger,Lion
+Nature,Dog,Wolf
+Nature,Crow,Pigeon
+Nature,Elephant,Rhino
+Nature,Dolphin,Shark
+Nature,Rain,Fog
+Nature,Snow,Ice
+Nature,Volcano,Mountain
+Nature,Peacock,Parrot
+Nature,River,Canal
+Places,Airport,Railway Station
+Places,Temple,Museum
+Places,Hospital,Clinic
+Places,Cinema,Theatre
+Places,Dubai,Singapore
+Places,Hyderabad,Bengaluru
+Places,Mall,Market
