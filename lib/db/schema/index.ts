@@ -43,6 +43,9 @@ export const sessions = pgTable('sessions', {
 export const registrationSettings = pgTable('registration_settings', {
   id: integer('id').primaryKey().default(1),
   isOpen: boolean('is_open').notNull().default(true),
+  quizLink: text('quiz_link').default('https://kahoot.it'),
+  round1Declared: boolean('round1_declared').notNull().default(false),
+  bettingOpen: boolean('betting_open').notNull().default(false),
   lockedAt: timestamp('locked_at', { withTimezone: true }),
   lockedBy: uuid('locked_by').references(() => staffAccounts.id),
 }).enableRLS()
@@ -152,6 +155,7 @@ export const taskSubmissions = pgTable('task_submissions', {
   id: uuid('id').defaultRandom().primaryKey(),
   teamId: uuid('team_id').notNull(),
   taskNumber: integer('task_number').notNull(),
+  submissionData: text('submission_data'),
   submittedAt: timestamp('submitted_at', { withTimezone: true }).defaultNow(),
   submittedBy: uuid('submitted_by'),
 }, (t) => ({
