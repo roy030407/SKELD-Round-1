@@ -1,0 +1,57 @@
+@import "tailwindcss";
+
+@theme {
+  /* Fonts (CSS vars injected by layout.tsx) */
+  --font-orbitron: var(--font-orbitron), ui-sans-serif;
+  --font-rajdhani: var(--font-rajdhani), ui-sans-serif;
+  --font-bangers: var(--font-bangers), cursive;
+  --font-mono: var(--font-jetbrains), ui-monospace;
+  --font-pixel: var(--font-vcr), "Courier New", monospace;
+
+  /* Colors — extract from screenshots; spot-check against live CSS */
+  --color-skeld-void: #05070a;       /* deep space background */
+  --color-skeld-panel: #0a1628;      /* amber panel dark base */
+  --color-skeld-amber: #f59e0b;      /* amber border / primary accent */
+  --color-skeld-amber-dim: #b45309;  /* dimmed amber for borders */
+  --color-skeld-red: #dc2626;        /* imposter red */
+  --color-skeld-glow-red: #ff4d4d;   /* glowing red button halo */
+  --color-skeld-cyan: #22d3ee;       /* crewmate cyan accent */
+  --color-skeld-green: #16a34a;      /* success / safe states */
+  --color-skeld-gold: #fbbf24;       /* leaderboard gold */
+  --color-skeld-silver: #94a3b8;     /* leaderboard silver */
+  --color-skeld-bronze: #b45309;     /* leaderboard bronze */
+
+  /* Projector scale multipliers */
+  --scale-projector: 1.5;
+
+  /* Radii */
+  --radius-panel: 1rem;
+  --radius-pill: 9999px;
+
+  /* Shadows / glows */
+  --shadow-glow-red: 0 0 24px color-mix(in oklab, var(--color-skeld-glow-red) 60%, transparent);
+  --shadow-glow-amber: 0 0 16px color-mix(in oklab, var(--color-skeld-amber) 50%, transparent);
+  --shadow-glow-cyan: 0 0 16px color-mix(in oklab, var(--color-skeld-cyan) 50%, transparent);
+}
+
+/* Space background grain texture */
+body {
+  background-image: radial-gradient(ellipse at center, #0a1628 0%, #05070a 70%);
+  min-height: 100svh;
+}
+
+/* Keyframe animations */
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: var(--shadow-glow-red); opacity: 1; }
+  50% { box-shadow: 0 0 40px color-mix(in oklab, var(--color-skeld-glow-red) 80%, transparent); opacity: 0.85; }
+}
+
+@keyframes float-crew {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-12px); }
+}
+
+@keyframes spin-ring {
+  from { stroke-dashoffset: 283; }
+  to { stroke-dashoffset: 0; }
+}
