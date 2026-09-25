@@ -8,8 +8,12 @@
     "start": "next start",
     "lint": "eslint",
     "test": "set DATABASE_URL=postgresql://dummy && set DIRECT_URL=postgresql://dummy && set SESSION_SECRET=change-me-at-least-32-chars-long && set ALLOWED_HOSTS=localhost,test && set APP_URL=http://localhost && set STAFF_ADMIN_USERNAME=admin && set STAFF_ADMIN_PASSWORD=change-me-admin && set STAFF_MONITOR_USERNAME=monitor && set STAFF_MONITOR_PASSWORD=change-me-monitor && set STAFF_DISPLAY_USERNAME=display && set STAFF_DISPLAY_PASSWORD=change-me-display && vitest run",
+    "db:push": "drizzle-kit push",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
     "seed:words": "tsx scripts/seed-words.ts",
-    "seed:staff": "npx tsx scripts/seed-staff.ts"
+    "seed:staff": "npx tsx scripts/seed-staff.ts",
+    "seed:teams": "npx tsx scripts/seed-teams.ts"
   },
   "dependencies": {
     "clsx": "^2.1.1",

@@ -137,9 +137,9 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 |-------|----------------|--------|-----------|
 | 1. Foundation, Data Model, Registration & Auth | 1/1 | Complete | 2026-09-26 |
 | 2. Design System & Visual Foundation | 1/1 | Complete | 2026-09-26 |
-| 3. Score Ledger & Ranking Engine | 0/TBD | Next (parallel with 4) | - |
-| 4. Check-in & Task Gating | 0/TBD | Next (parallel with 3) | - |
-| 5. Task 1 - Imposter Word Game Engine | 0/TBD | Not started | - |
-| 6. Tasks 2, 3 & 4 (Kahoot) - Completion and Scoring | 0/TBD | Not started | - |
-| 7. Betting, Admin Corrections & Audit Log | 0/TBD | Not started | - |
-| 8. Display/Projector & Operational Hardening | 0/TBD | Not started | - |
+| 3. Score Ledger & Ranking Engine | 1/1 | Complete | 2026-09-26 |
+| 4. Check-in & Task Gating | 1/1 | Complete | 2026-09-26 |
+| 5. Task 1 - Imposter Word Game Engine | 1/1 | Complete | 2026-09-26 |
+| 6. Tasks 2, 3 & 4 (Kahoot) - Completion and Scoring | 1/1 | Complete | 2026-09-26 |
+| 7. Betting, Admin Corrections & Audit Log | 1/1 | Complete | 2026-09-26 |
+| 8. Display/Projector & Operational Hardening | 1/1 | Complete | 2026-09-26 |
