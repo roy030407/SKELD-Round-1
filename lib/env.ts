@@ -1,8 +1,8 @@
 import { z } from 'zod'
 
 const envSchema = z.object({
-  DATABASE_URL: z.string().url(),         // port 6543 Supavisor transaction pooler
-  DIRECT_URL: z.string().url(),           // port 5432 for drizzle-kit migrations
+  DATABASE_URL: z.string().url(),         // pooled connection (PgBouncer transaction mode, e.g. Neon's pooler) — used by the app
+  DIRECT_URL: z.string().url(),           // unpooled/direct connection — used only for drizzle-kit migrations
   SESSION_SECRET: z.string().min(32),
   ALLOWED_HOSTS: z.string(),              // comma-separated list
   APP_URL: z.string().url(),

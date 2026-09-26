@@ -10,6 +10,7 @@ A standalone web app for Round 1 of "Project Skeld," the Robotics Club NIT Waran
 ### Constraints
 
 - **Tech stack**: Next.js (App Router), TypeScript (strict), Tailwind, PostgreSQL on Supabase (database only), Drizzle ORM, zod — fixed by the user, not open for reconsideration without discussion
+  - **UPDATE (2026-09-26):** Switched database host from Supabase to Neon (out of free Supabase project slots; user decided after discussion, per this line's own "not open for reconsideration without discussion" clause). Neon's pooled/unpooled connection strings are used the same way as Supabase's were (`DATABASE_URL`=pooled for the app, `DIRECT_URL`=unpooled for migrations); the `postgres.js` driver code in `lib/db/client.ts` needed no changes. The Supabase-specific research below is kept as historical record.
 - **Deployment**: Vercel, custom domain unknown at build time — no hardcoded domains anywhere; env vars only
 - **Timeline**: Event is 26 Sept, 5 PM — hard, immovable deadline
 - **Scale**: 20-30 teams (~150-180 players); Task 1 must fit in a 10-15 minute window per session
@@ -47,6 +48,8 @@ A standalone web app for Round 1 of "Project Skeld," the Robotics Club NIT Waran
 | `eslint` + `@typescript-eslint` (Next.js's built-in `next lint` / flat config) | Lint, including a rule against `dangerouslySetInnerHTML` / `eval` | PROJECT.md security constraints explicitly forbid these — enforce with `no-restricted-syntax` ESLint rules, not just code review. |
 | `npm audit` in CI | Dependency vulnerability scan | Already required by PROJECT.md constraints; run on every push via GitHub Actions or Vercel's build step. |
 ## Connecting to Supabase from Vercel (critical operational detail)
+> **Note (2026-09-26):** Project switched database host to Neon (Supabase free-tier project slots exhausted). Neon's pooler is also PgBouncer-based transaction-mode pooling with the same prepared-statement restriction, so everything below applies identically with "Neon" substituted for "Supabase"/"Supavisor" and the connection strings pointed at Neon's pooled (`DATABASE_URL`) and unpooled (`DIRECT_URL`) hosts. No driver code changes were needed.
+
 - **Use Supabase's connection pooler (Supavisor), transaction mode, port `6543`**, not the direct connection (port `5432`) for any code path that runs in a Vercel serverless function (i.e., all Route Handlers). Reasons:
 - **Transaction-mode pooling does not support prepared statements.** When constructing the `postgres` client, pass `{ prepare: false }`:
 - For `drizzle-kit` migrations (run locally or in CI, not on Vercel's serverless runtime), the **direct connection or session-mode pooler (port 5432)** is fine and often preferable (full DDL support). Keep `DATABASE_URL` (pooled, for the app) and `DIRECT_URL` (direct/session, for migrations) as two separate env vars — this is the same convention Drizzle's own Supabase guide and Prisma both converged on independently, so it's a safe, recognizable pattern.

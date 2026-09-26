@@ -4,7 +4,7 @@ import * as schema from './schema'
 import { env } from '../env'
 
 const client = postgres(env.DATABASE_URL, {
-  prepare: false,   // REQUIRED: Supavisor transaction mode doesn't support prepared statements
+  prepare: false,   // REQUIRED: PgBouncer/pooler transaction mode (Neon, Supabase's Supavisor, etc.) doesn't support prepared statements
   max: 1,
   ssl: 'require',
 })

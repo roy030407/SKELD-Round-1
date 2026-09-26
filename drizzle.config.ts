@@ -6,5 +6,4 @@ export default defineConfig({
   out: './drizzle/migrations',
   dialect: 'postgresql',
   dbCredentials: { url: env.DIRECT_URL },
-  entities: { roles: { provider: 'supabase' } },
 })

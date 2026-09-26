@@ -6,7 +6,7 @@ Standalone web app for Round 1 of "Project Skeld", the Robotics Club NIT Waranga
 - Next.js 16 (App Router)
 - TypeScript (Strict)
 - Tailwind CSS v4
-- Drizzle ORM + PostgreSQL (Supabase DB-only, Supavisor connection pooler)
+- Drizzle ORM + PostgreSQL (Neon DB-only, pooled/unpooled connection strings — switched from Supabase 2026-09-26, see CLAUDE.md)
 - Vitest & Playwright
 
 ## Getting Started

@@ -145,13 +145,13 @@ export default function Task2CipherPage() {
           </Panel>
         )}
 
-        {/* Leader Assembly Console */}
+        {/* Assembly Console */}
         <Panel className="flex flex-col gap-4">
           <h2 className="font-orbitron text-lg font-bold text-gray-200">
-            Leader Assembly Console
+            Assembly Console
           </h2>
           <p className="font-rajdhani text-sm text-gray-400">
-            Team Leader: once ALL 6 members have decoded their fragment, assemble the full sentence and submit.
+            Any team member: once ALL 6 members have decoded their fragment, assemble the full sentence and submit.
           </p>
 
           <textarea
@@ -172,7 +172,7 @@ export default function Task2CipherPage() {
             {submitting ? 'Verifying...' : 'SUBMIT ASSEMBLED SENTENCE'}
           </Button>
           <p className="font-rajdhani text-xs text-gray-500">
-            ⚠ Only one submission per team. Submit only when the entire team agrees on the sentence.
+            ⚠ Only one submission per team (any member may submit). Submit only when the entire team agrees on the sentence.
           </p>
         </Panel>
 
