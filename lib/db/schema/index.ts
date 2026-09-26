@@ -1,4 +1,5 @@
-import { pgTable, text, timestamp, boolean, uuid, integer, jsonb, unique } from 'drizzle-orm/pg-core'
+import { pgTable, text, timestamp, boolean, uuid, integer, jsonb, unique, uniqueIndex } from 'drizzle-orm/pg-core'
+import { sql } from 'drizzle-orm'
 
 export const teams = pgTable('teams', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -38,15 +39,27 @@ export const sessions = pgTable('sessions', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
   revokedAt: timestamp('revoked_at', { withTimezone: true }),
-}).enableRLS()
+}, (t) => ({
+  // Server-enforced "one active session per player/staff" (REQUIREMENTS.md AUTH-02):
+  // a partial unique index that only applies to non-revoked rows, so a
+  // revoked-then-reinserted session never collides, but two simultaneously
+  // active sessions for the same player/staff are rejected at the DB level.
+  onePlayerActive: uniqueIndex('sessions_one_active_player')
+    .on(t.playerId)
+    .where(sql`${t.revokedAt} is null`),
+  oneStaffActive: uniqueIndex('sessions_one_active_staff')
+    .on(t.staffId)
+    .where(sql`${t.revokedAt} is null`),
+})).enableRLS()
 
 export const registrationSettings = pgTable('registration_settings', {
   id: integer('id').primaryKey().default(1),
   isOpen: boolean('is_open').notNull().default(true),
   lockedAt: timestamp('locked_at', { withTimezone: true }),
   lockedBy: uuid('locked_by').references(() => staffAccounts.id),
-  quizLink: text('quiz_link').default('https://kahoot.it'),
+  quizLink: text('quiz_link').default('https://wayground.com/join?gc=940315&source=liveDashboard'),
   round1Declared: boolean('round1_declared').notNull().default(false),
+  bombDefusalLink: text('bomb_defusal_link').default('https://vedant-jadhav-23.github.io/BombDefusalTask/'),
   bettingOpen: boolean('betting_open').notNull().default(false),
   betsSettled: boolean('bets_settled').notNull().default(false),
 }).enableRLS()
@@ -162,14 +175,6 @@ export const taskSubmissions = pgTable('task_submissions', {
 }, (t) => ({
   unqTeamTaskSubmit: unique().on(t.teamId, t.taskNumber)
 })).enableRLS()
-
-export const kahootStaging = pgTable('kahoot_staging', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  teamId: uuid('team_id'),
-  kahootNickname: text('kahoot_nickname').notNull(),
-  matchedByAdmin: boolean('matched_by_admin').notNull().default(false),
-  committed: boolean('committed').notNull().default(false),
-}).enableRLS()
 
 export const words = pgTable('words', {
   id: uuid('id').defaultRandom().primaryKey(),

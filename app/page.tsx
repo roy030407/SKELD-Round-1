@@ -10,10 +10,10 @@ import { StatusPill } from "@/components/ui/status-pill"
 import { Card } from "@/components/ui/card"
 
 const tasks: RailTask[] = [
-  { number: 1, name: "Imposter Game", status: "locked" },
+  { number: 1, name: "Quiz & Betting", status: "locked" },
   { number: 2, name: "Cipher Puzzle", status: "locked" },
   { number: 3, name: "Bomb Defusal", status: "locked" },
-  { number: 4, name: "Kahoot Finals", status: "locked" },
+  { number: 4, name: "Imposter Shuffle", status: "locked" },
 ]
 
 export default function LandingPage() {

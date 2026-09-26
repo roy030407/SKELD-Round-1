@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const session = await requireSession(req)
-    if (!['leader', 'player'].includes(session.role)) {
+    if (session.role !== 'leader') {
       return new NextResponse('Forbidden', { status: 403 })
     }
     if (!session.teamId) {

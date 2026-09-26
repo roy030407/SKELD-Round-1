@@ -1,31 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getLeaderboard, getTeamScoreSummaries } from '@/lib/scoring/ledger'
-import { cookies } from 'next/headers'
-import { openSessionId, loadSession } from '@/lib/auth/session'
-import { db } from '@/lib/db/client'
+import { getLeaderboard } from '@/lib/scoring/ledger'
+import { requireSession } from '@/lib/auth/guard'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(req: NextRequest) {
   try {
-    const c = await cookies()
-    const token = c.get('session')?.value
-    let session: any = null
-    if (token) {
-      const sid = await openSessionId(token)
-      if (sid) {
-        session = await loadSession(db, sid)
-      }
-    }
+    // Server is the sole authority on who sees the full leaderboard: a real,
+    // valid session is required (no unauthenticated access), and the
+    // client-supplied `?source=projector` bypass has been removed entirely —
+    // the projector view is authorized exclusively via a real `display` role
+    // session, same as staff.
+    const session = await requireSession(req)
 
-    const isStaff = session && ['admin', 'monitor', 'display'].includes(session.role)
-    const url = new URL(req.url)
-    const isProjector = url.searchParams.get('source') === 'projector'
+    const isStaff = ['admin', 'monitor', 'display'].includes(session.role)
 
     const fullLeaderboard = await getLeaderboard()
 
-    // If staff or projector display, provide the full live leaderboard
-    if (isStaff || isProjector) {
+    // Only staff (admin/monitor) or the display role (projector screen) get
+    // the full live leaderboard.
+    if (isStaff) {
       return NextResponse.json({
         leaderboard: fullLeaderboard,
         hiddenForPlayers: false,
@@ -54,7 +48,10 @@ export async function GET(req: NextRequest) {
           }
         : null,
     })
-  } catch (error) {
+  } catch (error: any) {
+    if (error.status) {
+      return new NextResponse(error.message, { status: error.status })
+    }
     console.error('Leaderboard error:', error)
     return NextResponse.json(
       { error: 'Failed to compute leaderboard' },

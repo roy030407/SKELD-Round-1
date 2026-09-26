@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireSession } from '@/lib/auth/guard'
-import { db } from '@/lib/db/client'
+import { canEnterTask } from '@/lib/gating'
 import { validateFragment } from '@/lib/game/cipher-data'
 import { z } from 'zod'
 
@@ -16,7 +16,16 @@ const schema = z.object({
  */
 export async function POST(req: NextRequest) {
   try {
-    await requireSession(req)
+    const session = await requireSession(req)
+    if (!session.teamId) {
+      return NextResponse.json({ error: 'Not a player session' }, { status: 403 })
+    }
+
+    const gateCheck = await canEnterTask(session.teamId, 2)
+    if (!gateCheck.allowed) {
+      return NextResponse.json({ error: gateCheck.reason }, { status: 403 })
+    }
+
     const body = await req.json()
     const parsed = schema.parse(body)
 

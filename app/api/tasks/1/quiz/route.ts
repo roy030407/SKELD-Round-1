@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
     const [settings] = await db.select().from(registrationSettings).where(eq(registrationSettings.id, 1))
 
     return NextResponse.json({
-      quizLink: settings?.quizLink ?? 'https://kahoot.it',
+      quizLink: settings?.quizLink ?? 'https://wayground.com/join?gc=940315&source=liveDashboard',
       round1Declared: settings?.round1Declared ?? false,
       bettingOpen: settings?.bettingOpen ?? false,
     })

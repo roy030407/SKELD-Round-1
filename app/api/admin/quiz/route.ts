@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
     }))
 
     return NextResponse.json({
-      quizLink: settings?.quizLink ?? 'https://kahoot.it',
+      quizLink: settings?.quizLink ?? 'https://wayground.com/join?gc=940315&source=liveDashboard',
       round1Declared: settings?.round1Declared ?? false,
       bettingOpen: settings?.bettingOpen ?? false,
       teams: teamList,

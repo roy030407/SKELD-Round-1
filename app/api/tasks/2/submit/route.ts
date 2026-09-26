@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireSession } from '@/lib/auth/guard'
-import { db } from '@/lib/db/client'
-import { taskSubmissions, teams } from '@/lib/db/schema'
+import { canEnterTask } from '@/lib/gating'
 import { validateMasterSentence } from '@/lib/game/cipher-data'
-import { recordScoreEvent } from '@/lib/scoring/ledger'
-import { eq, count } from 'drizzle-orm'
+import { submitTaskWithRank } from '@/lib/scoring/ledger'
 import { z } from 'zod'
 
 const schema = z.object({
@@ -13,13 +11,20 @@ const schema = z.object({
 
 /**
  * POST /api/tasks/2/submit
- * Leader submits assembled sentence. Validates against master, awards rank-based points.
+ * Any team member may submit the assembled sentence (no leader restriction —
+ * matches PROJECT.md, which only names Task 4/betting as leader-only).
+ * Validates against master, awards rank-based points.
  */
 export async function POST(req: NextRequest) {
   try {
     const session = await requireSession(req)
     if (!session.teamId) {
       return NextResponse.json({ error: 'Not a player session' }, { status: 403 })
+    }
+
+    const gateCheck = await canEnterTask(session.teamId, 2)
+    if (!gateCheck.allowed) {
+      return NextResponse.json({ error: gateCheck.reason }, { status: 403 })
     }
 
     const body = await req.json()
@@ -29,43 +34,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ correct: false, error: 'Incorrect sentence. Try again.' }, { status: 200 })
     }
 
-    // Rank-based scoring: count existing submissions for task 2
-    const [{ value: existingCount }] = await db
-      .select({ value: count() })
-      .from(taskSubmissions)
-      .where(eq(taskSubmissions.taskNumber, 2))
+    // Rank-based scoring, race-safe (serialized via advisory lock in a transaction).
+    const result = await submitTaskWithRank({
+      teamId: session.teamId,
+      taskNumber: 2,
+      submittedBy: session.playerId ?? null,
+      submissionData: parsed.assembledSentence,
+      eventType: 'TASK_2_CIPHER',
+      idempotencyKey: `task2-cipher-${session.teamId}`,
+      reasonPrefix: 'Cipher completed',
+    })
 
-    const rank = Number(existingCount) + 1
-    const totalTeams = 25
-    const points = Math.max(1, totalTeams - rank + 1)
-
-    // Record submission (idempotent — unique constraint on teamId+taskNumber)
-    const insertResult = await db
-      .insert(taskSubmissions)
-      .values({
-        teamId: session.teamId,
-        taskNumber: 2,
-        submittedBy: session.playerId ?? null,
-        submissionData: parsed.assembledSentence,
-      })
-      .onConflictDoNothing({ target: [taskSubmissions.teamId, taskSubmissions.taskNumber] })
-      .returning()
-
-    if (!insertResult.length) {
+    if (result.alreadySubmitted) {
       return NextResponse.json({ error: 'Task 2 already submitted by your team.' }, { status: 409 })
     }
 
-    // Record score event
-    await recordScoreEvent({
-      teamId: session.teamId,
-      taskNumber: 2,
-      eventType: 'TASK_2_CIPHER',
-      points,
-      idempotencyKey: `task2-cipher-${session.teamId}`,
-      reason: `Cipher completed at rank #${rank}`,
-    })
-
-    return NextResponse.json({ correct: true, rank, points })
+    return NextResponse.json({ correct: true, rank: result.rank, points: result.points })
   } catch (err: any) {
     if (err.status) return new NextResponse(err.message, { status: err.status })
     return NextResponse.json({ error: err.message }, { status: 400 })
