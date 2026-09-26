@@ -1,3 +1,4 @@
+import { headers } from "next/headers"
 import { Orbitron, Rajdhani, Bangers, JetBrains_Mono } from "next/font/google"
 // import localFont from "next/font/local"
 import "./globals.css"
@@ -12,10 +13,15 @@ const jetbrains = JetBrains_Mono({ subsets: ["latin"], variable: "--font-jetbrai
 //   display: "swap",
 // })
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // Reading the nonce via headers() here is required: it's what lets Next.js
+  // attach the matching nonce to its own hydration/streaming scripts, not
+  // just the ones we author ourselves.
+  const nonce = (await headers()).get("x-nonce") ?? undefined
+
   return (
     <html lang="en" className={`${orbitron.variable} ${rajdhani.variable} ${bangers.variable} ${jetbrains.variable}`}>
-      <body className="bg-skeld-void text-white antialiased font-rajdhani">{children}</body>
+      <body className="bg-skeld-void text-white antialiased font-rajdhani" data-csp-nonce={nonce}>{children}</body>
     </html>
   )
 }

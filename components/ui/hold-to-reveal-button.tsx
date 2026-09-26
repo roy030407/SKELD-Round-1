@@ -17,6 +17,18 @@ export function HoldToReveal({
 }) {
   const [state, setState] = useState<"idle" | "holding" | "revealed" | "released-early">("idle")
   const timerRef = useRef<NodeJS.Timeout | null>(null)
+  const circleRef = useRef<SVGCircleElement>(null)
+
+  // Set these imperatively via the CSSOM (not a JSX `style` prop) so the
+  // markup never carries an inline `style=""` attribute — that attribute
+  // form is what CSP's `style-src-attr` blocks, while direct DOM property
+  // writes are unaffected by CSP.
+  useEffect(() => {
+    const circle = circleRef.current
+    if (!circle) return
+    circle.style.animationDuration = state === "holding" ? `${duration}ms` : ""
+    circle.style.strokeDashoffset = state === "holding" ? "0" : "283"
+  }, [state, duration])
 
   const handlePointerDown = () => {
     if (state === "revealed") return
@@ -64,6 +76,7 @@ export function HoldToReveal({
             viewBox="0 0 100 100"
           >
             <circle
+              ref={circleRef}
               cx="50"
               cy="50"
               r="45"
@@ -77,10 +90,6 @@ export function HoldToReveal({
                 state === "holding" && "animate-[spin-ring_linear_forwards]",
                 state === "idle" && "duration-300"
               )}
-              style={{
-                animationDuration: state === "holding" ? `${duration}ms` : undefined,
-                strokeDashoffset: state === "holding" ? 0 : 283,
-              }}
             />
           </svg>
           <span

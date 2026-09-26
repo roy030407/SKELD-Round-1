@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Panel } from '@/components/ui/panel'
 import { Button } from '@/components/ui/button'
 import { StatusPill } from '@/components/ui/status-pill'
@@ -30,6 +30,20 @@ export default function CheckInPage() {
     const interval = setInterval(fetchStatus, 5000)
     return () => clearInterval(interval)
   }, [])
+
+  const progressBarRef = useRef<HTMLDivElement>(null)
+
+  // Set width via the CSSOM instead of a JSX `style` prop: CSP's
+  // `style-src-attr` blocks inline `style=""` attributes but not runtime
+  // DOM property writes.
+  useEffect(() => {
+    if (!progressBarRef.current) return
+    const pct = Math.min(
+      100,
+      ((status?.checkedInCount || 0) / (status?.totalPlayers || 6)) * 100
+    )
+    progressBarRef.current.style.width = `${pct}%`
+  }, [status])
 
   const handleCheckIn = async () => {
     setLoading(true)
@@ -116,13 +130,8 @@ export default function CheckInPage() {
 
               <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-skeld-panel">
                 <div
+                  ref={progressBarRef}
                   className="h-full bg-skeld-cyan transition-all duration-300"
-                  style={{
-                    width: `${Math.min(
-                      100,
-                      ((status.checkedInCount || 0) / (status.totalPlayers || 6)) * 100
-                    )}%`,
-                  }}
                 />
               </div>
 

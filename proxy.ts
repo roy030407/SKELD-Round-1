@@ -16,7 +16,7 @@ export function proxy(request: NextRequest) {
   
   const csp = `
     default-src 'self';
-    script-src 'self' 'nonce-${nonce}';
+    script-src 'self' 'nonce-${nonce}' 'strict-dynamic';
     style-src 'self' 'nonce-${nonce}';
     font-src 'self';
     img-src 'self' data:;
@@ -31,7 +31,7 @@ export function proxy(request: NextRequest) {
   // Cookie gate for protected paths
   const path = request.nextUrl.pathname;
   const isProtected = PROTECTED_PATHS.some(p => path.startsWith(p));
-  const isPublic = PUBLIC_PATHS.some(p => path.startsWith(p));
+  const isPublic = PUBLIC_PATHS.some(p => (p === '/' ? path === '/' : path.startsWith(p)));
   
   if (isProtected && !isPublic) {
     const sessionCookie = request.cookies.get('session');
