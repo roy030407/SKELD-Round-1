@@ -17,13 +17,22 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Not a player session' }, { status: 403 })
     }
 
-    // Get this player's record to determine their position (player code suffix)
-    const [player] = await db.select().from(players).where(eq(players.id, session.playerId))
-    if (!player) return NextResponse.json({ error: 'Player not found' }, { status: 404 })
+    // Fragment assignment is by the player's position within their own team,
+    // ordered by registration. It deliberately does NOT parse the player code:
+    // codes encode the team as well as the member (e.g. P1203 for SKELD-12's
+    // third member), so digit-extraction produced 1203 and clamped every
+    // member of every team onto the same final fragment.
+    const roster = await db
+      .select({ id: players.id, playerCode: players.playerCode })
+      .from(players)
+      .where(eq(players.teamId, session.teamId))
+      .orderBy(players.registeredAt, players.id)
 
-    // playerCode format: P001..P006 → extract number 1..6 → index 0..5
-    const codeNum = parseInt(player.playerCode.replace(/\D/g, ''), 10)
-    const fragmentIndex = Math.max(0, Math.min(5, codeNum - 1))
+    const position = roster.findIndex((p) => p.id === session.playerId)
+    if (position === -1) return NextResponse.json({ error: 'Player not found' }, { status: 404 })
+
+    const player = roster[position]
+    const fragmentIndex = position % CIPHER_FRAGMENTS.length
 
     const frag = CIPHER_FRAGMENTS[fragmentIndex]
 
