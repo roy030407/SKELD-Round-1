@@ -20,7 +20,11 @@ const registerSchema = z.object({
     .string()
     .transform((s) => s.trim().toUpperCase())
     .pipe(z.string().regex(/^[A-Z0-9]{4,20}$/, 'Enter your roll number, e.g. 24MAB0A29')),
-  teamCode: z.string(),
+  // Team codes are seeded as an exact "SKELD-01" format, but a phone
+  // keyboard will happily produce "skeld-01", "skeld 01", or a stray
+  // trailing space - all real, all currently failing the exact-match lookup
+  // below with the same unhelpful "Team not found" regardless of cause.
+  teamCode: z.string().transform((s) => s.trim().toUpperCase()),
   email: z.string().email()
 })
 
@@ -38,8 +42,20 @@ export async function POST(req: Request) {
       const [settings] = await tx.select().from(registrationSettings).where(eq(registrationSettings.id, 1))
       if (settings && !settings.isOpen) throw new Error('Registration is closed')
         
-      const [team] = await tx.select().from(teams).where(eq(teams.code, body.teamCode))
-      if (!team) throw new Error('Team not found')
+      // Exact match first (cheap, covers the common case), then fall back to
+      // a punctuation-insensitive match - a phone keyboard will happily
+      // produce "SKELD01" or "SKELD 01" for a team actually coded
+      // "SKELD-01", and there are only ever ~25 teams, so scanning all of
+      // them to compare normalised forms costs nothing.
+      const exactMatch = await tx.select().from(teams).where(eq(teams.code, body.teamCode))
+      let team: (typeof exactMatch)[number] | undefined = exactMatch[0]
+      if (!team) {
+        const normalize = (s: string) => s.replace(/[^A-Z0-9]/g, '')
+        const target = normalize(body.teamCode)
+        const allTeams = await tx.select().from(teams)
+        team = allTeams.find((t) => normalize(t.code) === target)
+      }
+      if (!team) throw new Error(`Team code "${body.teamCode}" not found. Double-check it with your organizer.`)
         
       const members = await tx.select().from(players).where(eq(players.teamId, team.id))
       if (members.length >= 6) throw new Error('Team is full')
