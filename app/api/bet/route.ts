@@ -1,29 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireSession } from '@/lib/auth/guard'
 import { db } from '@/lib/db/client'
-import { bets, registrationSettings } from '@/lib/db/schema'
+import { bets, registrationSettings, teams, players } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 
-const placeBetSchema = z.object({
+const betSchema = z.object({
   predictedRank: z.number().int().min(1).max(25),
 })
 
+/** GET — return whether this team has placed a bet and current betting status */
 export async function GET(req: NextRequest) {
   try {
-    const session = await requireSession(req, db)
-    if (!session.teamId) {
-      return NextResponse.json({ error: 'Team ID required' }, { status: 400 })
-    }
+    const session = await requireSession(req)
 
     const [settings] = await db.select().from(registrationSettings).where(eq(registrationSettings.id, 1))
-    const [existingBet] = await db.select().from(bets).where(eq(bets.teamId, session.teamId))
+    const bettingOpen = settings?.bettingOpen ?? false
+    const round1Declared = settings?.round1Declared ?? false
+
+    if (!session.teamId) {
+      return NextResponse.json({ error: 'Not a player session' }, { status: 403 })
+    }
+
+    const [existing] = await db.select().from(bets).where(eq(bets.teamId, session.teamId))
 
     return NextResponse.json({
-      round1Declared: settings?.round1Declared ?? false,
-      bettingOpen: settings?.bettingOpen ?? false,
-      currentBet: existingBet ? existingBet.predictedRank : null,
-      placedAt: existingBet ? existingBet.placedAt : null,
+      bettingOpen,
+      round1Declared,
+      bet: existing ? { predictedRank: existing.predictedRank, placedAt: existing.placedAt } : null,
     })
   } catch (err: any) {
     if (err.status) return new NextResponse(err.message, { status: err.status })
@@ -31,51 +35,41 @@ export async function GET(req: NextRequest) {
   }
 }
 
+/** POST — place a rank bet (leader only, once per team, betting must be open) */
 export async function POST(req: NextRequest) {
   try {
-    const session = await requireSession(req, db)
+    const session = await requireSession(req)
+    if (!['leader', 'player'].includes(session.role)) {
+      return new NextResponse('Forbidden', { status: 403 })
+    }
     if (!session.teamId) {
-      return NextResponse.json({ error: 'Team ID required' }, { status: 400 })
-    }
-
-    const [settings] = await db.select().from(registrationSettings).where(eq(registrationSettings.id, 1))
-    if (!settings?.round1Declared) {
-      return NextResponse.json(
-        { error: 'Betting is locked until Round 1 Quiz results are declared by organizers.' },
-        { status: 403 }
-      )
-    }
-
-    if (!settings?.bettingOpen) {
-      return NextResponse.json(
-        { error: 'Betting has been closed by organizers for this phase.' },
-        { status: 403 }
-      )
+      return NextResponse.json({ error: 'Not a player session' }, { status: 403 })
     }
 
     const body = await req.json()
-    const parsed = placeBetSchema.parse(body)
+    const parsed = betSchema.parse(body)
 
-    const [newBet] = await db
+    // Gate: betting must be open
+    const [settings] = await db.select().from(registrationSettings).where(eq(registrationSettings.id, 1))
+    if (!settings?.bettingOpen) {
+      return NextResponse.json({ error: 'Betting is not open yet. Wait for Round 1 results.' }, { status: 403 })
+    }
+
+    // Insert (unique constraint on teamId prevents double-bet)
+    const result = await db
       .insert(bets)
       .values({
         teamId: session.teamId,
         predictedRank: parsed.predictedRank,
       })
-      .onConflictDoUpdate({
-        target: bets.teamId,
-        set: {
-          predictedRank: parsed.predictedRank,
-          placedAt: new Date(),
-        },
-      })
+      .onConflictDoNothing({ target: bets.teamId })
       .returning()
 
-    return NextResponse.json({
-      success: true,
-      predictedRank: newBet.predictedRank,
-      message: `Bet recorded! Your team predicted Rank #${newBet.predictedRank}.`,
-    })
+    if (!result.length) {
+      return NextResponse.json({ error: 'Your team has already placed a bet.' }, { status: 409 })
+    }
+
+    return NextResponse.json({ success: true, predictedRank: parsed.predictedRank })
   } catch (err: any) {
     if (err.status) return new NextResponse(err.message, { status: err.status })
     return NextResponse.json({ error: err.message }, { status: 400 })

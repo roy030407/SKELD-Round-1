@@ -1,58 +1,38 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireSession } from '@/lib/auth/guard'
 import { db } from '@/lib/db/client'
-import { players, taskSubmissions } from '@/lib/db/schema'
-import { DEFAULT_CIPHER_MISSION } from '@/lib/game/cipher-data'
-import { eq, and } from 'drizzle-orm'
+import { players, teams } from '@/lib/db/schema'
+import { CIPHER_FRAGMENTS } from '@/lib/game/cipher-data'
+import { eq } from 'drizzle-orm'
 
-export const dynamic = 'force-dynamic'
-
+/**
+ * GET /api/tasks/2/state
+ * Returns the player's assigned cipher fragment based on their position in the team.
+ * P001 → fragment[0], P002 → fragment[1], ..., P006 → fragment[5]
+ */
 export async function GET(req: NextRequest) {
   try {
-    const session = await requireSession(req, db)
-    if (!session.teamId) {
-      return NextResponse.json({ error: 'Team ID required' }, { status: 400 })
+    const session = await requireSession(req)
+    if (!session.playerId || !session.teamId) {
+      return NextResponse.json({ error: 'Not a player session' }, { status: 403 })
     }
 
-    // 1. Get all players for this team ordered by playerCode
-    const teamPlayers = await db
-      .select()
-      .from(players)
-      .where(eq(players.teamId, session.teamId))
+    // Get this player's record to determine their position (player code suffix)
+    const [player] = await db.select().from(players).where(eq(players.id, session.playerId))
+    if (!player) return NextResponse.json({ error: 'Player not found' }, { status: 404 })
 
-    teamPlayers.sort((a, b) => a.playerCode.localeCompare(b.playerCode))
+    // playerCode format: P001..P006 → extract number 1..6 → index 0..5
+    const codeNum = parseInt(player.playerCode.replace(/\D/g, ''), 10)
+    const fragmentIndex = Math.max(0, Math.min(5, codeNum - 1))
 
-    // 2. Identify caller's index (1 to 6)
-    const myIndex = teamPlayers.findIndex((p) => p.id === session.playerId)
-    const playerIndex = myIndex !== -1 ? (myIndex % 6) + 1 : 1
-
-    // 3. Get fragment for this player
-    const fragment = DEFAULT_CIPHER_MISSION.fragments.find((f) => f.playerIndex === playerIndex) || DEFAULT_CIPHER_MISSION.fragments[0]
-
-    // 4. Check if team already submitted task 2
-    const [submission] = await db
-      .select()
-      .from(taskSubmissions)
-      .where(
-        and(
-          eq(taskSubmissions.teamId, session.teamId),
-          eq(taskSubmissions.taskNumber, 2)
-        )
-      )
+    const frag = CIPHER_FRAGMENTS[fragmentIndex]
 
     return NextResponse.json({
-      missionName: DEFAULT_CIPHER_MISSION.name,
-      playerIndex,
-      isLeader: session.role === 'leader',
-      fragment: {
-        playerIndex: fragment.playerIndex,
-        cipherType: fragment.cipherType,
-        clue: fragment.clue,
-        encryptedText: fragment.encryptedText,
-      },
-      totalFragments: DEFAULT_CIPHER_MISSION.fragments.length,
-      isCompleted: !!submission,
-      submittedAt: submission?.submittedAt ?? null,
+      fragmentIndex: frag.fragmentIndex,
+      encrypted: frag.encrypted,
+      cipherName: frag.cipherName,
+      clue: frag.clue,
+      playerCode: player.playerCode,
     })
   } catch (err: any) {
     if (err.status) return new NextResponse(err.message, { status: err.status })

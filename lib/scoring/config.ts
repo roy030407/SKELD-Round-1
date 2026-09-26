@@ -3,14 +3,9 @@
 
 export const SCORING_CONFIG = {
   task1: {
-    // Round 1 Quiz: points manually entered or rank-based
+    // Imposter caught: each of the 5 crewmates' ORIGINAL teams gets crewmate points
     crewmatePoints: 5,
-    imposterPoints: 10,
-    maxVotingRounds: 2,
-  },
-  task4: {
-    // Round 4 Shuffling: Imposter caught -> crewmates get 5 pts; Imposter survives -> 10 pts
-    crewmatePoints: 5,
+    // Imposter survives both votes: imposter's ORIGINAL team gets imposter points
     imposterPoints: 10,
     maxVotingRounds: 2,
   },

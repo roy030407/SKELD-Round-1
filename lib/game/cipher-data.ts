@@ -1,85 +1,118 @@
 // lib/game/cipher-data.ts
-// Round 2 Multi-Crew Cipher Mission Data
+// Cipher mission: 6 players each decode one encrypted fragment; leader assembles master sentence.
+// Master sentence: "THE ROBOTICS CLUB EXPEDITION TO THE STARS BEGINS TONIGHT IN NAB"
+// Each fragment is one word or phrase encrypted with a different cipher.
 
 export interface CipherFragment {
-  playerIndex: number // 1 to 6 (corresponding to P001..P006)
-  cipherType: 'Caesar (+3)' | 'Atbash' | 'Reverse' | 'Hex' | 'Binary' | 'Caesar (+5)'
+  fragmentIndex: number // 0–5, matches player slot (playerCode suffix P001=0 … P006=5)
+  encrypted: string
+  cipherName: string
   clue: string
-  encryptedText: string
-  decryptedText: string
+  plaintext: string // used server-side only for verification
 }
 
-export interface CipherMission {
-  id: string
-  name: string
-  masterSentence: string
-  fragments: CipherFragment[]
+// Master sentence the team must reconstruct
+export const MASTER_SENTENCE =
+  'THE ROBOTICS CLUB EXPEDITION TO THE STARS BEGINS TONIGHT IN NAB'
+
+// Caesar shift helper
+function caesarShift(text: string, shift: number): string {
+  return text
+    .split('')
+    .map((c) => {
+      if (c >= 'A' && c <= 'Z') {
+        return String.fromCharCode(((c.charCodeAt(0) - 65 + shift) % 26) + 65)
+      }
+      return c
+    })
+    .join('')
 }
 
-export const DEFAULT_CIPHER_MISSION: CipherMission = {
-  id: 'mission-alpha',
-  name: 'Skeld Communications Array Restoration',
-  masterSentence: 'THE ROBOTICS CLUB EXPEDITION TO THE STARS BEGINS TONIGHT IN NAB',
-  fragments: [
-    {
-      playerIndex: 1,
-      cipherType: 'Caesar (+3)',
-      clue: 'Shift each letter 3 positions backward in the alphabet (A -> X, D -> A).',
-      encryptedText: 'WKH URERWLFV',
-      decryptedText: 'THE ROBOTICS',
-    },
-    {
-      playerIndex: 2,
-      cipherType: 'Reverse',
-      clue: 'Reversed transmission order. Read the letters in reverse sequence.',
-      encryptedText: 'BULC',
-      decryptedText: 'CLUB',
-    },
-    {
-      playerIndex: 3,
-      cipherType: 'Caesar (+5)',
-      clue: 'Shift each letter 5 positions backward in the alphabet (F -> A).',
-      encryptedText: 'JCUJINYNTX YT',
-      decryptedText: 'EXPEDITION TO',
-    },
-    {
-      playerIndex: 4,
-      cipherType: 'Atbash',
-      clue: 'Atbash cipher: mirror each letter (A <-> Z, B <-> Y, C <-> X, G <-> T).',
-      encryptedText: 'GSV HGZIH',
-      decryptedText: 'THE STARS',
-    },
-    {
-      playerIndex: 5,
-      cipherType: 'Caesar (+3)',
-      clue: 'Shift each letter 3 positions backward in the alphabet (E -> B).',
-      encryptedText: 'EHJLQV WRQLJKW',
-      decryptedText: 'BEGINS TONIGHT',
-    },
-    {
-      playerIndex: 6,
-      cipherType: 'Atbash',
-      clue: 'Atbash cipher: mirror each letter (R <-> I, M <-> N).',
-      encryptedText: 'RM MZY',
-      decryptedText: 'IN NAB',
-    },
-  ],
+// Atbash: A↔Z, B↔Y, …
+function atbash(text: string): string {
+  return text
+    .split('')
+    .map((c) => {
+      if (c >= 'A' && c <= 'Z') {
+        return String.fromCharCode(90 - (c.charCodeAt(0) - 65))
+      }
+      return c
+    })
+    .join('')
 }
 
-/**
- * Normalizes a sentence for lenient comparison (trims extra spaces, ignores punctuation & case).
- */
-export function normalizeSentence(str: string): string {
-  return str
-    .toUpperCase()
-    .replace(/[^A-Z0-9]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
+// Reverse string
+function reverse(text: string): string {
+  return text.split('').reverse().join('')
 }
 
-/**
- * Validates whether the submitted assembled sentence matches the master sentence.
- */
-export function validateMasterSentence(submitted: string, mission: CipherMission = DEFAULT_CIPHER_MISSION): boolean {
-  return normalizeSentence(submitted) === normalizeSentence(mission.masterSentence)
+// The 6 fragments — split the sentence into 6 meaningful chunks
+// Plaintexts (combined exactly = MASTER_SENTENCE):
+// P001: "THE ROBOTICS"   → Caesar +3
+// P002: "CLUB"           → Reverse
+// P003: "EXPEDITION"     → Caesar +5
+// P004: "TO THE STARS"   → Atbash
+// P005: "BEGINS TONIGHT" → Caesar +7
+// P006: "IN NAB"         → Atbash
+
+export const CIPHER_FRAGMENTS: CipherFragment[] = [
+  {
+    fragmentIndex: 0,
+    plaintext: 'THE ROBOTICS',
+    encrypted: caesarShift('THE ROBOTICS', 3),
+    cipherName: 'Caesar Cipher (Shift +3)',
+    clue: 'Each letter is shifted forward by 3 positions in the alphabet. Z wraps to C.',
+  },
+  {
+    fragmentIndex: 1,
+    plaintext: 'CLUB',
+    encrypted: reverse('CLUB'),
+    cipherName: 'Reverse Cipher',
+    clue: 'The word is written backwards. Read it in reverse.',
+  },
+  {
+    fragmentIndex: 2,
+    plaintext: 'EXPEDITION',
+    encrypted: caesarShift('EXPEDITION', 5),
+    cipherName: 'Caesar Cipher (Shift +5)',
+    clue: 'Each letter is shifted forward by 5 positions. Y→D, Z→E.',
+  },
+  {
+    fragmentIndex: 3,
+    plaintext: 'TO THE STARS',
+    encrypted: atbash('TO THE STARS'),
+    cipherName: 'Atbash Cipher',
+    clue: 'A↔Z, B↔Y, C↔X … Mirror the alphabet.',
+  },
+  {
+    fragmentIndex: 4,
+    plaintext: 'BEGINS TONIGHT',
+    encrypted: caesarShift('BEGINS TONIGHT', 7),
+    cipherName: 'Caesar Cipher (Shift +7)',
+    clue: 'Each letter is shifted forward by 7 positions.',
+  },
+  {
+    fragmentIndex: 5,
+    plaintext: 'IN NAB',
+    encrypted: atbash('IN NAB'),
+    cipherName: 'Atbash Cipher',
+    clue: 'Mirror the alphabet: A↔Z, B↔Y …',
+  },
+]
+
+/** Normalize a submitted sentence for comparison: uppercase + collapse whitespace */
+export function normalizeSentence(s: string): string {
+  return s.toUpperCase().replace(/\s+/g, ' ').trim()
+}
+
+/** Validate a player's decrypted fragment against the expected plaintext */
+export function validateFragment(fragmentIndex: number, attempt: string): boolean {
+  const frag = CIPHER_FRAGMENTS[fragmentIndex]
+  if (!frag) return false
+  return normalizeSentence(attempt) === normalizeSentence(frag.plaintext)
+}
+
+/** Validate the assembled master sentence */
+export function validateMasterSentence(assembled: string): boolean {
+  return normalizeSentence(assembled) === normalizeSentence(MASTER_SENTENCE)
 }

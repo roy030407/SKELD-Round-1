@@ -4,11 +4,11 @@ import { useState, useEffect } from 'react'
 import { EmergencyBanner } from '@/components/ui/emergency-banner'
 import { Panel } from '@/components/ui/panel'
 import { Button } from '@/components/ui/button'
+import { VotingMotif, VotingPlayer } from '@/components/ui/voting-motif'
 import { HoldToReveal } from '@/components/ui/hold-to-reveal-button'
-import { VotingMotif, VotingPlayer, CrewmateColor, PlayerState } from '@/components/ui/voting-motif'
 import Link from 'next/link'
 
-export default function Task4ShufflingGamePage() {
+export default function Task4ShufflingPage() {
   const [loading, setLoading] = useState(true)
   const [gameState, setGameState] = useState<any>(null)
   const [selectedTargetId, setSelectedTargetId] = useState<string | null>(null)
@@ -21,8 +21,8 @@ export default function Task4ShufflingGamePage() {
       const res = await fetch('/api/tasks/4/state')
       if (res.ok) {
         const data = await res.json()
-        if (data.active) {
-          setGameState(data.gameState)
+        if (data.active && data.assigned) {
+          setGameState(data)
         }
       }
     } catch (err) {
@@ -55,10 +55,10 @@ export default function Task4ShufflingGamePage() {
       if (res.ok) {
         setVoteSubmitted(true)
         if (data.result?.gameOver) {
-          setGameResult(data.result.winner === 'crewmates' ? 'CREWMATES WIN!' : 'IMPOSTER WINS!')
+          setGameResult(data.result.winner === 'crewmates' ? 'CREWMATES WIN! IMPOSTER CAUGHT!' : 'IMPOSTER WINS! THEY SURVIVED!')
         }
       } else {
-        setError(data.error || 'Vote submission failed')
+        setError(data.error || 'Failed to submit vote')
       }
     } catch (err: any) {
       setError(err.message || 'Network error')
@@ -67,190 +67,149 @@ export default function Task4ShufflingGamePage() {
 
   if (loading) {
     return (
-      <main className="flex min-h-screen flex-col items-center justify-center bg-skeld-void text-white">
-        <div className="font-orbitron animate-pulse text-skeld-cyan">
-          Connecting to Table Shuffling Protocol...
-        </div>
+      <main className="flex min-h-screen items-center justify-center bg-skeld-void text-white">
+        <p className="font-orbitron animate-pulse text-skeld-cyan">Preparing Shuffling Protocol...</p>
       </main>
     )
   }
 
   if (!gameState) {
     return (
-      <main className="flex min-h-screen flex-col items-center bg-skeld-void pb-20 text-white">
-        <EmergencyBanner text="TASK 4: TABLE SHUFFLING PROTOCOL" />
-        <div className="mt-12 flex w-full max-w-xl flex-col items-center gap-6 px-4 text-center">
-          <Panel variant="amber" className="flex flex-col items-center gap-4 py-8">
-            <span className="text-5xl animate-bounce">🔀</span>
-            <h2 className="font-orbitron text-2xl font-bold text-skeld-amber">
-              Awaiting Shuffling Session
-            </h2>
-            <p className="font-rajdhani text-gray-300">
-              Mission Control will shuffle all checked-in crewmates across tables in the NAB auditorium.
-              Each table contains 6 players from 6 different teams (1 Imposter + 5 Crewmates).
-            </p>
-            <div className="rounded border border-skeld-cyan/30 bg-skeld-cyan/10 px-4 py-2 font-mono text-xs text-skeld-cyan">
-              Keep this screen open. Your table assignment will appear automatically!
-            </div>
-          </Panel>
-          <Link href="/player" className="font-rajdhani text-sm text-gray-400 hover:text-white">
-            ← Return to Crew Command Hub
-          </Link>
-        </div>
+      <main className="flex min-h-screen flex-col items-center justify-center bg-skeld-void p-4 text-white">
+        <Panel variant="amber" className="max-w-md text-center">
+          <h1 className="font-orbitron text-xl font-bold text-skeld-amber">
+            Task 4: Table Shuffling Protocol
+          </h1>
+          <p className="mt-4 font-rajdhani text-gray-300">
+            Waiting for organizers to initiate the table shuffle. You will be assigned to a cross-team table.
+          </p>
+          <p className="mt-2 font-rajdhani text-xs text-gray-500">
+            This page auto-refreshes every 3 seconds.
+          </p>
+          <div className="mt-6">
+            <Link href="/player" className="text-skeld-cyan hover:underline font-rajdhani text-sm">
+              ← Return to Player Hub
+            </Link>
+          </div>
+        </Panel>
       </main>
     )
   }
 
-  const votingPlayers: VotingPlayer[] = (gameState.players || []).map((p: any) => ({
-    id: p.playerId,
+  // Format players for VotingMotif
+  const motifPlayers: VotingPlayer[] = gameState.players.map((p: any) => ({
+    id: p.id,
     name: p.name,
-    color: (p.crewmateColor || 'cyan') as CrewmateColor,
-    state: (selectedTargetId === p.playerId ? 'voted' : 'idle') as PlayerState,
+    color: p.color,
+    state: p.hasVoted ? 'voted' : ('idle' as const),
+    isYou: p.isYou,
   }))
+
+  const me = gameState.players.find((p: any) => p.isYou)
 
   return (
     <main className="flex min-h-screen flex-col items-center bg-skeld-void pb-20 text-white">
-      <EmergencyBanner text={`TASK 4: SHUFFLED TABLE #${gameState.tableNumber}`} />
+      <EmergencyBanner text={`TABLE ${gameState.tableNumber}: SHUFFLING PROTOCOL — ROUND ${gameState.currentRound}`} />
 
-      <div className="mt-8 flex w-full max-w-2xl flex-col gap-6 px-4">
-        {/* ASSIGNED WORD CARD (HOLD TO REVEAL) */}
-        <Panel variant={gameState.isImposter ? 'red' : 'default'} className="flex flex-col gap-4">
-          <div className="flex items-center justify-between border-b border-white/10 pb-3">
-            <div>
-              <span className="font-orbitron text-xs uppercase tracking-wider text-gray-400">
-                Classified Identity
-              </span>
-              <h2 className="font-orbitron text-xl font-bold text-white">
-                Table #{gameState.tableNumber} Assignment
-              </h2>
+      <div className="mt-8 flex w-full max-w-2xl flex-col gap-8 px-4">
+        {gameResult ? (
+          <Panel variant="red" className="text-center p-8">
+            <h2 className="font-bangers text-4xl text-skeld-glow-red animate-pulse">
+              {gameResult}
+            </h2>
+            <p className="mt-4 font-rajdhani text-lg text-gray-200">
+              Task 4 is complete. Scores have been recorded.
+            </p>
+            <div className="mt-6">
+              <Link href="/leaderboard">
+                <Button variant="ghost">VIEW LEADERBOARD →</Button>
+              </Link>
             </div>
-            <span
-              className={`rounded px-2.5 py-1 font-mono text-xs font-bold uppercase ${
-                gameState.isImposter
-                  ? 'bg-skeld-red/20 text-skeld-glow-red border border-skeld-red'
-                  : 'bg-skeld-cyan/20 text-skeld-cyan border border-skeld-cyan'
-              }`}
-            >
-              {gameState.isImposter ? 'IMPOSTER' : 'CREWMATE'}
-            </span>
-          </div>
+          </Panel>
+        ) : (
+          <>
+            {/* Word Reveal */}
+            {me && (
+              <Panel variant="amber" className="flex flex-col items-center text-center">
+                <span className="font-orbitron text-xs uppercase tracking-widest text-skeld-amber/80">
+                  Secret Identity — Task 4
+                </span>
+                <p className="mt-1 font-rajdhani text-sm text-gray-400">
+                  Hold to reveal your role and word. Do not show your screen!
+                </p>
+                <div className="mt-4">
+                  <HoldToReveal duration={1200}>
+                    <div className="flex flex-col items-center gap-2">
+                      <span className="font-pixel text-2xl font-bold text-skeld-glow-red">
+                        {me.yourWord ?? 'WORD TBD'}
+                      </span>
+                      <span className="font-orbitron text-xs text-gray-400">
+                        {me.isImposter ? '⚠️ YOU ARE THE IMPOSTER' : '✓ YOU ARE A CREWMATE'}
+                      </span>
+                    </div>
+                  </HoldToReveal>
+                </div>
+              </Panel>
+            )}
 
-          <p className="font-rajdhani text-sm text-gray-300">
-            Do not let adjacent competitors see your screen! Hold the button below to inspect your secret word.
-          </p>
-
-          <HoldToReveal className="w-full">
-            <div className="rounded border border-skeld-cyan/40 bg-black/80 p-6 text-center">
-              <div className="font-orbitron text-xs text-skeld-cyan uppercase tracking-wider">
-                Your Secret Assigned Word:
-              </div>
-              <div className="mt-2 font-mono text-3xl font-black text-white">
-                "{gameState.assignedWord || 'CONFIDENTIAL'}"
-              </div>
-              <p className="mt-2 font-rajdhani text-sm text-gray-300">
-                {gameState.isImposter
-                  ? 'You are the IMPOSTER. Blend in and survive the voting rounds!'
-                  : 'You are a CREWMATE. Find the player whose word does not match!'}
-              </p>
-            </div>
-          </HoldToReveal>
-        </Panel>
-
-        {/* VOTING PROTOCOL */}
-        <Panel variant="amber" className="flex flex-col gap-4">
-          <div className="flex items-center justify-between border-b border-skeld-amber/30 pb-3">
-            <div>
-              <span className="font-orbitron text-xs uppercase tracking-wider text-skeld-amber">
-                Emergency Meeting
+            {/* Security Map */}
+            <Panel className="flex flex-col items-center">
+              <span className="mb-2 font-orbitron text-xs uppercase tracking-wider text-gray-400">
+                Security Table
               </span>
-              <h3 className="font-orbitron text-lg font-bold text-white">
-                Voting Round #{gameState.currentRound}
+              <VotingMotif players={motifPlayers} />
+            </Panel>
+
+            {/* Voting Controls */}
+            <Panel variant="amber" className="flex flex-col gap-4">
+              <h3 className="font-orbitron text-sm uppercase text-skeld-amber">
+                Cast Your Vote (Round {gameState.currentRound} of 2)
               </h3>
-            </div>
-            <span className="font-mono text-xs text-gray-400">
-              Votes Cast: {gameState.votesCount} / {gameState.currentRound === 1 ? '6' : '5'}
-            </span>
-          </div>
-
-          {gameResult ? (
-            <div className="rounded border border-skeld-green bg-skeld-green/20 p-6 text-center">
-              <h2 className="font-orbitron text-2xl font-black text-skeld-green">
-                {gameResult}
-              </h2>
-              <p className="mt-2 font-rajdhani text-white">
-                Scores have been updated in the master ledger! Check the main auditorium screen.
-              </p>
-              <div className="mt-4 flex justify-center">
-                <Link
-                  href="/leaderboard"
-                  className="rounded bg-skeld-green px-6 py-2 font-orbitron text-sm font-bold text-black"
-                >
-                  VIEW MISSION TELEMETRY
-                </Link>
-              </div>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-4">
-              <p className="font-rajdhani text-sm text-gray-300">
-                Discuss with your tablemates. Identify the player whose word does not match the rest of the crew!
-              </p>
-
-              {/* TABLE MOTIF */}
-              <VotingMotif players={votingPlayers} />
-
-              {/* SELECT TARGET CREWMATE BUTTONS */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
-                {votingPlayers.map((player) => (
-                  <button
-                    key={player.id}
-                    type="button"
-                    onClick={() => {
-                      if (!voteSubmitted) setSelectedTargetId(player.id)
-                    }}
-                    className={`rounded border p-2 text-center transition-all ${
-                      selectedTargetId === player.id
-                        ? 'border-skeld-red bg-skeld-red/30 text-white font-bold ring-2 ring-skeld-red'
-                        : 'border-white/10 bg-black/40 text-gray-300 hover:border-white/30'
-                    }`}
-                  >
-                    <div className="font-orbitron text-xs truncate">{player.name}</div>
-                    <div className="font-mono text-[10px] text-gray-400 capitalize">{player.color}</div>
-                  </button>
-                ))}
-              </div>
 
               {error && (
-                <div className="rounded border border-skeld-red bg-skeld-red/20 p-3 font-rajdhani text-sm text-skeld-glow-red">
+                <div className="rounded border border-skeld-red bg-skeld-red/20 p-2 font-rajdhani text-xs text-skeld-red">
                   {error}
                 </div>
               )}
 
               {voteSubmitted ? (
-                <div className="rounded border border-skeld-cyan/40 bg-skeld-cyan/10 p-4 text-center font-orbitron text-sm text-skeld-cyan">
-                  ✓ YOUR VOTE HAS BEEN RECORDED. WAITING FOR OTHER PLAYERS...
+                <div className="rounded border border-green-500/50 bg-green-900/20 p-3 text-center font-rajdhani text-sm text-green-400">
+                  ✓ Vote cast. Waiting for tablemates...
                 </div>
               ) : (
-                <Button
-                  variant="danger"
-                  disabled={!selectedTargetId}
-                  onClick={handleCastVote}
-                  className="w-full font-orbitron"
-                >
-                  CAST VOTE AGAINST SELECTED CREWMATE
-                </Button>
-              )}
-            </div>
-          )}
-        </Panel>
+                <div className="flex flex-col gap-3">
+                  <div className="grid grid-cols-2 gap-2">
+                    {gameState.players
+                      .filter((p: any) => !p.isYou)
+                      .map((p: any) => (
+                        <button
+                          key={p.id}
+                          onClick={() => setSelectedTargetId(p.id)}
+                          className={`flex items-center justify-between rounded border p-2 text-left font-rajdhani text-sm transition-all ${
+                            selectedTargetId === p.id
+                              ? 'border-skeld-amber bg-skeld-amber/20 text-white font-bold'
+                              : 'border-skeld-panel bg-skeld-void/50 text-gray-300 hover:border-skeld-amber/50'
+                          }`}
+                        >
+                          <span>{p.name}</span>
+                          <span className="text-xs uppercase font-mono text-gray-500">{p.color}</span>
+                        </button>
+                      ))}
+                  </div>
 
-        <div className="flex justify-center">
-          <Link
-            href="/player"
-            className="font-rajdhani text-sm text-gray-400 hover:text-skeld-cyan"
-          >
-            ← Return to Crew Command Hub
-          </Link>
-        </div>
+                  <Button
+                    variant="danger"
+                    onClick={handleCastVote}
+                    disabled={!selectedTargetId}
+                    className="mt-2 w-full"
+                  >
+                    CONFIRM VOTE
+                  </Button>
+                </div>
+              )}
+            </Panel>
+          </>
+        )}
       </div>
     </main>
   )

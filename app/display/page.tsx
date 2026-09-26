@@ -10,7 +10,7 @@ export default function ProjectorDisplayPage() {
 
   const fetchLeaderboard = async () => {
     try {
-      const res = await fetch('/api/leaderboard?source=projector')
+      const res = await fetch('/api/leaderboard')
       if (res.ok) {
         const data = await res.json()
         setTeams(data.leaderboard || [])

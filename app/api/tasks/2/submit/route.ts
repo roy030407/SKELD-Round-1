@@ -1,90 +1,71 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireSession, requireRole } from '@/lib/auth/guard'
+import { requireSession } from '@/lib/auth/guard'
 import { db } from '@/lib/db/client'
 import { taskSubmissions, teams } from '@/lib/db/schema'
-import { canEnterTask } from '@/lib/gating'
-import { recordScoreEvent } from '@/lib/scoring/ledger'
 import { validateMasterSentence } from '@/lib/game/cipher-data'
+import { recordScoreEvent } from '@/lib/scoring/ledger'
+import { eq, count } from 'drizzle-orm'
 import { z } from 'zod'
 
-const submitCipherSchema = z.object({
-  sentence: z.string().min(5),
+const schema = z.object({
+  assembledSentence: z.string().min(1),
 })
 
+/**
+ * POST /api/tasks/2/submit
+ * Leader submits assembled sentence. Validates against master, awards rank-based points.
+ */
 export async function POST(req: NextRequest) {
   try {
-    const session = await requireSession(req, db)
-    requireRole(session, ['leader', 'admin'])
-
+    const session = await requireSession(req)
     if (!session.teamId) {
-      return NextResponse.json({ error: 'Team ID required' }, { status: 400 })
+      return NextResponse.json({ error: 'Not a player session' }, { status: 403 })
     }
 
     const body = await req.json()
-    const parsed = submitCipherSchema.parse(body)
+    const parsed = schema.parse(body)
 
-    // Check gating: must have completed task 1
-    const gateCheck = await canEnterTask(session.teamId, 2)
-    if (!gateCheck.allowed) {
-      return NextResponse.json({ error: gateCheck.reason }, { status: 403 })
+    if (!validateMasterSentence(parsed.assembledSentence)) {
+      return NextResponse.json({ correct: false, error: 'Incorrect sentence. Try again.' }, { status: 200 })
     }
 
-    // Verify sentence
-    const isCorrect = validateMasterSentence(parsed.sentence)
-    if (!isCorrect) {
-      return NextResponse.json(
-        { error: 'Assembled transmission invalid. Ensure all 6 crew fragments are in the proper sequence.' },
-        { status: 400 }
-      )
-    }
+    // Rank-based scoring: count existing submissions for task 2
+    const [{ value: existingCount }] = await db
+      .select({ value: count() })
+      .from(taskSubmissions)
+      .where(eq(taskSubmissions.taskNumber, 2))
 
-    // Insert task submission
-    const [submission] = await db
+    const rank = Number(existingCount) + 1
+    const totalTeams = 25
+    const points = Math.max(1, totalTeams - rank + 1)
+
+    // Record submission (idempotent — unique constraint on teamId+taskNumber)
+    const insertResult = await db
       .insert(taskSubmissions)
       .values({
         teamId: session.teamId,
         taskNumber: 2,
-        submissionData: parsed.sentence.trim(),
-        submittedBy: session.playerId ?? session.staffId,
+        submittedBy: session.playerId ?? null,
+        submissionData: parsed.assembledSentence,
       })
-      .onConflictDoNothing({
-        target: [taskSubmissions.teamId, taskSubmissions.taskNumber],
-      })
+      .onConflictDoNothing({ target: [taskSubmissions.teamId, taskSubmissions.taskNumber] })
       .returning()
 
-    if (!submission) {
-      return NextResponse.json({
-        success: true,
-        alreadySubmitted: true,
-        message: 'Task 2 was already successfully completed by your team!',
-      })
+    if (!insertResult.length) {
+      return NextResponse.json({ error: 'Task 2 already submitted by your team.' }, { status: 409 })
     }
 
-    // Rank-based points
-    const existing = await db.select().from(taskSubmissions)
-    const taskSubmits = existing.filter((s) => s.taskNumber === 2)
-    const rank = taskSubmits.length
-
-    const allTeams = await db.select().from(teams)
-    const totalTeams = Math.max(allTeams.length, 25)
-    const points = Math.max(1, totalTeams - rank + 1)
-
+    // Record score event
     await recordScoreEvent({
       teamId: session.teamId,
       taskNumber: 2,
       eventType: 'TASK_2_CIPHER',
       points,
-      reason: `Task 2: Deciphered in Rank #${rank}`,
-      idempotencyKey: `t2-${session.teamId}`,
-      createdBy: session.playerId ?? session.staffId,
+      idempotencyKey: `task2-cipher-${session.teamId}`,
+      reason: `Cipher completed at rank #${rank}`,
     })
 
-    return NextResponse.json({
-      success: true,
-      rank,
-      points,
-      message: `Transmission accepted! Your team finished Rank #${rank} and earned ${points} points!`,
-    })
+    return NextResponse.json({ correct: true, rank, points })
   } catch (err: any) {
     if (err.status) return new NextResponse(err.message, { status: err.status })
     return NextResponse.json({ error: err.message }, { status: 400 })

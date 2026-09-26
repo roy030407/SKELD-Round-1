@@ -1,89 +1,98 @@
 // lib/game/logic-gates-data.ts
-// Round 3 Reactor Bomb Defusal Logic Gate Puzzles
+// 5 sequential logic gate puzzles for Round 3 Bomb Defusal.
+// Each stage: players toggle binary inputs → must produce the correct output.
+
+export type InputDef = {
+  label: string // e.g. "A", "B", "C"
+  description?: string
+}
 
 export interface LogicGateStage {
-  stageNumber: number
+  stageIndex: number // 0-4
   title: string
   description: string
-  diagram: string // ASCII / visual representation
-  inputs: Array<{ id: string; label: string; defaultVal: 0 | 1 }>
-  targetOutput: 0 | 1
+  gateType: string
+  inputs: InputDef[]
+  /** Expected binary output (0 or 1) */
+  expectedOutput: 0 | 1
+  /** Given the player's inputs (keyed by label), return true if correct */
   verify: (inputs: Record<string, 0 | 1>) => boolean
-  hint: string
 }
 
 export const LOGIC_GATE_STAGES: LogicGateStage[] = [
   {
-    stageNumber: 1,
-    title: 'Primary Capacitor: AND Gate',
-    description: 'Stabilize the main power rail by configuring inputs A and B to yield Output 1.',
-    diagram: 'A [__] ───\\ \n          )── AND ── Output: 1\nB [__] ───/ ',
+    stageIndex: 0,
+    title: 'Stage 1 — AND Gate',
+    description: 'Both switches must be ON to disarm this circuit. Set A=1 and B=1.',
+    gateType: 'AND',
     inputs: [
-      { id: 'A', label: 'Terminal A', defaultVal: 0 },
-      { id: 'B', label: 'Terminal B', defaultVal: 0 },
+      { label: 'A', description: 'Primary relay switch' },
+      { label: 'B', description: 'Secondary relay switch' },
     ],
-    targetOutput: 1,
-    verify: (inputs) => inputs.A === 1 && inputs.B === 1,
-    hint: 'Both inputs into an AND gate must be active (1) to produce an output of 1.',
+    expectedOutput: 1,
+    verify: (inputs) => inputs['A'] === 1 && inputs['B'] === 1,
   },
   {
-    stageNumber: 2,
-    title: 'Coolant Flow Circuit: NOR Gate',
-    description: 'The coolant loop is overheating! Cut the alarm signal by configuring inputs C and D so Output is 1.',
-    diagram: 'C [__] ───\\ \n          )── OR ──(O)── Output: 1\nD [__] ───/ ',
+    stageIndex: 1,
+    title: 'Stage 2 — NOR Gate',
+    description: 'Neither input must be active. Set A=0 and B=0 to get output 1.',
+    gateType: 'NOR',
     inputs: [
-      { id: 'C', label: 'Valve C', defaultVal: 1 },
-      { id: 'D', label: 'Valve D', defaultVal: 0 },
+      { label: 'A', description: 'Coolant valve A' },
+      { label: 'B', description: 'Coolant valve B' },
     ],
-    targetOutput: 1,
-    verify: (inputs) => inputs.C === 0 && inputs.D === 0,
-    hint: 'NOR gate produces 1 ONLY when both inputs are 0 (NOT(C OR D)).',
+    expectedOutput: 1,
+    verify: (inputs) => inputs['A'] === 0 && inputs['B'] === 0,
   },
   {
-    stageNumber: 3,
-    title: 'Magnetic Containment: XOR Disarm',
-    description: 'Eliminate resonance feedback in the containment ring. Output must be 1, but matching inputs will trigger explosion!',
-    diagram: 'E [__] ───\\ \n          ))── XOR ── Output: 1\nF [__] ───/ ',
+    stageIndex: 2,
+    title: 'Stage 3 — XOR Gate',
+    description: 'Exactly one input must be active. Set A=1 B=0 (or A=0 B=1).',
+    gateType: 'XOR',
     inputs: [
-      { id: 'E', label: 'Flux E', defaultVal: 0 },
-      { id: 'F', label: 'Flux F', defaultVal: 0 },
+      { label: 'A', description: 'Wiring channel alpha' },
+      { label: 'B', description: 'Wiring channel beta' },
     ],
-    targetOutput: 1,
-    verify: (inputs) => inputs.E !== inputs.F,
-    hint: 'XOR produces 1 only when inputs differ (one is 1, the other is 0).',
+    expectedOutput: 1,
+    verify: (inputs) => (inputs['A'] ^ inputs['B']) === 1,
   },
   {
-    stageNumber: 4,
-    title: 'Plasma Injector: Compound NAND-OR Mesh',
-    description: 'Balance the multi-stage injector. Output must equal 1. Formula: (G NAND H) AND J = 1.',
-    diagram: 'G [__] ──\\ \n         )── NAND ──\\ \nH [__] ──/           )── AND ── Output: 1\nJ [__] ─────────────/ ',
+    stageIndex: 3,
+    title: 'Stage 4 — Compound NAND-AND',
+    description:
+      'Two sub-circuits: NAND(A,B) feeds into AND with C. Find A, B, C so final output = 1.',
+    gateType: 'NAND-AND',
     inputs: [
-      { id: 'G', label: 'Coil G', defaultVal: 1 },
-      { id: 'H', label: 'Coil H', defaultVal: 1 },
-      { id: 'J', label: 'Igniter J', defaultVal: 0 },
+      { label: 'A', description: 'Sector A breaker' },
+      { label: 'B', description: 'Sector B breaker' },
+      { label: 'C', description: 'Master override' },
     ],
-    targetOutput: 1,
-    verify: (inputs) => !(inputs.G === 1 && inputs.H === 1) && inputs.J === 1,
-    hint: 'J must be 1. For NAND, G and H cannot both be 1.',
-  },
-  {
-    stageNumber: 5,
-    title: 'Master Detonator Override: 4-Channel Bus',
-    description: 'Final defusal bypass! Disarm the detonation timer. Formula: (K XOR L) AND (M OR NOT N) = 1.',
-    diagram: 'K [__] ──\\ \n         ))── XOR ──\\ \nL [__] ──/           \\\nM [__] ──\\            )── AND ── Output: 1\n          )── OR ────/ \nN [__] ──[NOT]──/ ',
-    inputs: [
-      { id: 'K', label: 'Switch K', defaultVal: 0 },
-      { id: 'L', label: 'Switch L', defaultVal: 0 },
-      { id: 'M', label: 'Switch M', defaultVal: 0 },
-      { id: 'N', label: 'Switch N', defaultVal: 1 },
-    ],
-    targetOutput: 1,
+    // NAND(A,B)=1 when NOT(A AND B). AND(NAND(A,B), C)=1 when NAND=1 AND C=1.
+    // Solution: A=0, B=1, C=1 → NAND(0,1)=1, AND(1,1)=1 ✓
+    expectedOutput: 1,
     verify: (inputs) => {
-      const xorPart = inputs.K !== inputs.L
-      const notN = inputs.N === 0 ? 1 : 0
-      const orPart = inputs.M === 1 || notN === 1
-      return xorPart && orPart
+      const nandAB = (inputs['A'] === 1 && inputs['B'] === 1) ? 0 : 1
+      return nandAB === 1 && inputs['C'] === 1
     },
-    hint: 'K and L must differ. Either M must be 1 OR N must be 0.',
+  },
+  {
+    stageIndex: 4,
+    title: 'Stage 5 — 4-Channel Bus Override',
+    description:
+      'Four channels A, B, C, D. Output = (A OR B) AND (C XOR D). Target output = 1.',
+    gateType: 'COMPLEX',
+    inputs: [
+      { label: 'A', description: 'Bus channel alpha' },
+      { label: 'B', description: 'Bus channel beta' },
+      { label: 'C', description: 'Bus channel gamma' },
+      { label: 'D', description: 'Bus channel delta' },
+    ],
+    // Many solutions. One: A=1, B=0, C=1, D=0 → (1 OR 0)=1, (1 XOR 0)=1, AND=1 ✓
+    expectedOutput: 1,
+    verify: (inputs) => {
+      const orAB = (inputs['A'] === 1 || inputs['B'] === 1) ? 1 : 0
+      const xorCD = (inputs['C'] ^ inputs['D']) as 0 | 1
+      return orAB === 1 && xorCD === 1
+    },
   },
 ]

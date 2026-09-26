@@ -1,102 +1,90 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireSession, requireRole } from '@/lib/auth/guard'
+import { requireSession } from '@/lib/auth/guard'
 import { db } from '@/lib/db/client'
-import { taskSubmissions, teams } from '@/lib/db/schema'
-import { canEnterTask } from '@/lib/gating'
-import { recordScoreEvent } from '@/lib/scoring/ledger'
+import { taskSubmissions } from '@/lib/db/schema'
 import { LOGIC_GATE_STAGES } from '@/lib/game/logic-gates-data'
+import { recordScoreEvent } from '@/lib/scoring/ledger'
+import { eq, count } from 'drizzle-orm'
 import { z } from 'zod'
 
-const defusalSchema = z.object({
-  stageInputs: z.record(z.string(), z.record(z.string(), z.number().int().min(0).max(1))),
+const schema = z.object({
+  stages: z.array(
+    z.object({
+      stageIndex: z.number().int().min(0).max(4),
+      inputs: z.record(z.string(), z.union([z.literal(0), z.literal(1)])),
+    })
+  ).length(5),
 })
 
+/**
+ * POST /api/tasks/3/submit
+ * Verifies all 5 logic gate stages simultaneously.
+ * Fastest team wins most points (rank-based).
+ */
 export async function POST(req: NextRequest) {
   try {
-    const session = await requireSession(req, db)
-    requireRole(session, ['leader', 'admin', 'player'])
-
+    const session = await requireSession(req)
     if (!session.teamId) {
-      return NextResponse.json({ error: 'Team ID required' }, { status: 400 })
+      return NextResponse.json({ error: 'Not a player session' }, { status: 403 })
     }
 
     const body = await req.json()
-    const parsed = defusalSchema.parse(body)
+    const parsed = schema.parse(body)
 
-    // Check gating: must have completed task 2
-    const gateCheck = await canEnterTask(session.teamId, 3)
-    if (!gateCheck.allowed) {
-      return NextResponse.json({ error: gateCheck.reason }, { status: 403 })
+    // Verify all stages
+    const results = parsed.stages.map((s) => {
+      const stage = LOGIC_GATE_STAGES[s.stageIndex]
+      return {
+        stageIndex: s.stageIndex,
+        correct: stage ? stage.verify(s.inputs as Record<string, 0 | 1>) : false,
+      }
+    })
+
+    const allCorrect = results.every((r) => r.correct)
+    if (!allCorrect) {
+      const wrong = results.filter((r) => !r.correct).map((r) => r.stageIndex + 1)
+      return NextResponse.json({
+        correct: false,
+        error: `Stages ${wrong.join(', ')} are incorrect. Re-check your gate logic.`,
+        stageResults: results,
+      })
     }
 
-    // Verify all 5 stages
-    for (const stage of LOGIC_GATE_STAGES) {
-      const inputs = parsed.stageInputs[stage.stageNumber.toString()]
-      if (!inputs) {
-        return NextResponse.json(
-          { error: `Stage ${stage.stageNumber} inputs missing.` },
-          { status: 400 }
-        )
-      }
-      const typedInputs: Record<string, 0 | 1> = {}
-      for (const [k, v] of Object.entries(inputs)) {
-        typedInputs[k] = v === 1 ? 1 : 0
-      }
-      if (!stage.verify(typedInputs)) {
-        return NextResponse.json(
-          { error: `Logic Gate Stage ${stage.stageNumber} is incorrectly configured. Bomb unstable!` },
-          { status: 400 }
-        )
-      }
-    }
+    // Rank-based scoring
+    const [{ value: existingCount }] = await db
+      .select({ value: count() })
+      .from(taskSubmissions)
+      .where(eq(taskSubmissions.taskNumber, 3))
 
-    // Insert task submission
-    const [submission] = await db
+    const rank = Number(existingCount) + 1
+    const totalTeams = 25
+    const points = Math.max(1, totalTeams - rank + 1)
+
+    // Idempotent insertion
+    const insertResult = await db
       .insert(taskSubmissions)
       .values({
         teamId: session.teamId,
         taskNumber: 3,
-        submissionData: JSON.stringify({ defusedAt: new Date().toISOString() }),
-        submittedBy: session.playerId ?? session.staffId,
+        submittedBy: session.playerId ?? null,
       })
-      .onConflictDoNothing({
-        target: [taskSubmissions.teamId, taskSubmissions.taskNumber],
-      })
+      .onConflictDoNothing({ target: [taskSubmissions.teamId, taskSubmissions.taskNumber] })
       .returning()
 
-    if (!submission) {
-      return NextResponse.json({
-        success: true,
-        alreadySubmitted: true,
-        message: 'Task 3 was already successfully defused by your team!',
-      })
+    if (!insertResult.length) {
+      return NextResponse.json({ error: 'Task 3 already submitted by your team.' }, { status: 409 })
     }
-
-    // Rank-based points (fastest team gets N, next gets N-1, etc.)
-    const existing = await db.select().from(taskSubmissions)
-    const taskSubmits = existing.filter((s) => s.taskNumber === 3)
-    const rank = taskSubmits.length
-
-    const allTeams = await db.select().from(teams)
-    const totalTeams = Math.max(allTeams.length, 25)
-    const points = Math.max(1, totalTeams - rank + 1)
 
     await recordScoreEvent({
       teamId: session.teamId,
       taskNumber: 3,
-      eventType: 'TASK_3_DEFUSAL',
+      eventType: 'TASK_3_BOMB_DEFUSAL',
       points,
-      reason: `Task 3: Defused in Rank #${rank}`,
-      idempotencyKey: `t3-${session.teamId}`,
-      createdBy: session.playerId ?? session.staffId,
+      idempotencyKey: `task3-bomb-${session.teamId}`,
+      reason: `Bomb defused at rank #${rank}`,
     })
 
-    return NextResponse.json({
-      success: true,
-      rank,
-      points,
-      message: `BOMB DEFUSED! Your team stabilized the core at Rank #${rank} and earned ${points} points!`,
-    })
+    return NextResponse.json({ correct: true, rank, points, stageResults: results })
   } catch (err: any) {
     if (err.status) return new NextResponse(err.message, { status: err.status })
     return NextResponse.json({ error: err.message }, { status: 400 })

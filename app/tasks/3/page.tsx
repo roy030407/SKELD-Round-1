@@ -1,296 +1,184 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { EmergencyBanner } from '@/components/ui/emergency-banner'
 import { Panel } from '@/components/ui/panel'
 import { Button } from '@/components/ui/button'
 import { LOGIC_GATE_STAGES } from '@/lib/game/logic-gates-data'
 import Link from 'next/link'
 
+type StageInputs = Record<string, 0 | 1>
+
 export default function Task3BombDefusalPage() {
-  const [activeStage, setActiveStage] = useState(1)
-  const [inputs, setInputs] = useState<Record<string, Record<string, 0 | 1>>>(() => {
-    const initial: Record<string, Record<string, 0 | 1>> = {}
-    for (const s of LOGIC_GATE_STAGES) {
-      initial[s.stageNumber.toString()] = {}
-      for (const inp of s.inputs) {
-        initial[s.stageNumber.toString()][inp.id] = inp.defaultVal
-      }
-    }
-    return initial
-  })
-
-  const [solvedStages, setSolvedStages] = useState<Record<number, boolean>>({})
+  const [stageIndex, setStageIndex] = useState(0)
+  const [stagesInputs, setStagesInputs] = useState<StageInputs[]>(
+    LOGIC_GATE_STAGES.map((s) => Object.fromEntries(s.inputs.map((inp) => [inp.label, 0 as 0 | 1])))
+  )
+  const [solvedStages, setSolvedStages] = useState<boolean[]>(new Array(5).fill(false))
   const [submitting, setSubmitting] = useState(false)
-  const [result, setResult] = useState<any>(null)
+  const [result, setResult] = useState<{ rank: number; points: number } | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [timerSeconds, setTimerSeconds] = useState(0)
+  const [stageErrors, setStageErrors] = useState<(string | null)[]>(new Array(5).fill(null))
 
-  // Timer effect
-  useEffect(() => {
-    if (result) return
-    const interval = setInterval(() => {
-      setTimerSeconds((prev) => prev + 1)
-    }, 1000)
-    return () => clearInterval(interval)
-  }, [result])
+  const currentStage = LOGIC_GATE_STAGES[stageIndex]
 
-  // Check current stage solution on input change
-  const currentStageData = LOGIC_GATE_STAGES.find((s) => s.stageNumber === activeStage)
-
-  const toggleInput = (stageNum: number, inputId: string) => {
-    if (result) return
-    setInputs((prev) => {
-      const stageInputs = { ...prev[stageNum.toString()] }
-      stageInputs[inputId] = stageInputs[inputId] === 1 ? 0 : 1
-      return {
-        ...prev,
-        [stageNum.toString()]: stageInputs,
-      }
-    })
+  function toggleInput(label: string) {
+    const updated = [...stagesInputs]
+    const current = updated[stageIndex][label]
+    updated[stageIndex] = { ...updated[stageIndex], [label]: current === 1 ? 0 : 1 }
+    setStagesInputs(updated)
   }
 
-  const handleVerifyCurrentStage = () => {
-    if (!currentStageData) return
-    const stageInputs = inputs[activeStage.toString()] || {}
-    const isCorrect = currentStageData.verify(stageInputs)
-    if (isCorrect) {
-      setSolvedStages((prev) => ({ ...prev, [activeStage]: true }))
-      if (activeStage < LOGIC_GATE_STAGES.length) {
-        setActiveStage((prev) => prev + 1)
-      }
-      setError(null)
+  function verifyCurrentStage() {
+    const correct = currentStage.verify(stagesInputs[stageIndex])
+    const newSolved = [...solvedStages]
+    const newErrors = [...stageErrors]
+    if (correct) {
+      newSolved[stageIndex] = true
+      newErrors[stageIndex] = null
+      setSolvedStages(newSolved)
+      setStageErrors(newErrors)
+      // Auto-advance to next unsolved stage
+      const nextUnsolved = newSolved.findIndex((s, i) => !s && i > stageIndex)
+      if (nextUnsolved !== -1) setStageIndex(nextUnsolved)
     } else {
-      setError(`Logic circuit feedback negative. Check the gate conditions and hint for Stage ${activeStage}!`)
+      newErrors[stageIndex] = '✗ Incorrect output. Adjust your inputs and try again.'
+      setStageErrors(newErrors)
     }
   }
 
-  const handleDefuseBomb = async () => {
+  async function handleFinalSubmit() {
+    const allSolved = solvedStages.every(Boolean)
+    if (!allSolved) {
+      setError('Complete all 5 stages first.')
+      return
+    }
     setSubmitting(true)
     setError(null)
-    try {
-      const res = await fetch('/api/tasks/3/submit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ stageInputs: inputs }),
-      })
-      const data = await res.json()
-      if (res.ok) {
-        setResult(data)
-      } else {
-        setError(data.error || 'Defusal failed')
-      }
-    } catch (err: any) {
-      setError(err.message || 'Network error')
-    } finally {
-      setSubmitting(false)
+    const res = await fetch('/api/tasks/3/submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        stages: LOGIC_GATE_STAGES.map((s, i) => ({
+          stageIndex: i,
+          inputs: stagesInputs[i],
+        })),
+      }),
+    })
+    const data = await res.json()
+    if (data.correct) {
+      setResult({ rank: data.rank, points: data.points })
+    } else {
+      setError(data.error ?? 'Submission rejected. Recheck your gate solutions.')
     }
+    setSubmitting(false)
   }
 
-  const allStagesSolved = LOGIC_GATE_STAGES.every((s) => solvedStages[s.stageNumber])
-
-  const formatTimer = (secs: number) => {
-    const mins = Math.floor(secs / 60)
-    const rem = secs % 60
-    return `${mins.toString().padStart(2, '0')}:${rem.toString().padStart(2, '0')}`
+  if (result) {
+    return (
+      <main className="flex min-h-screen flex-col items-center justify-center bg-skeld-void text-white">
+        <Panel className="max-w-md text-center">
+          <h1 className="font-bangers text-4xl text-green-400 animate-pulse">BOMB DEFUSED!</h1>
+          <p className="font-orbitron text-lg mt-4">Rank #{result.rank} — +{result.points} pts</p>
+          <div className="mt-6">
+            <Link href="/tasks/4"><Button variant="primary">PROCEED TO TASK 4 (FINALS) →</Button></Link>
+          </div>
+        </Panel>
+      </main>
+    )
   }
 
   return (
     <main className="flex min-h-screen flex-col items-center bg-skeld-void pb-20 text-white">
-      <EmergencyBanner text="TASK 3: REACTOR BOMB DEFUSAL" />
+      <EmergencyBanner text="TASK 3: REACTOR BOMB DEFUSAL — ALL HANDS" />
 
       <div className="mt-8 flex w-full max-w-2xl flex-col gap-6 px-4">
-        {/* DEFUSAL HUD HEADER */}
-        <div className="flex items-center justify-between rounded border border-skeld-red bg-skeld-red/10 p-4">
-          <div className="flex items-center gap-3">
-            <span className="text-3xl animate-bounce">💣</span>
-            <div>
-              <div className="font-orbitron text-xs text-skeld-glow-red uppercase tracking-wider">
-                CORE MELTDOWN STATUS
-              </div>
-              <div className="font-orbitron text-xl font-bold text-white">
-                ARMED & TICKING
-              </div>
-            </div>
-          </div>
-          <div className="text-right">
-            <div className="font-orbitron text-xs text-gray-400">DEFUSAL CLOCK</div>
-            <div className="font-mono text-3xl font-black text-skeld-glow-red animate-pulse">
-              {formatTimer(timerSeconds)}
-            </div>
-          </div>
-        </div>
-
-        {/* STAGE PROGRESS TABS */}
-        <div className="grid grid-cols-5 gap-2">
-          {LOGIC_GATE_STAGES.map((s) => {
-            const isSolved = solvedStages[s.stageNumber]
-            const isCurrent = s.stageNumber === activeStage
-            return (
-              <button
-                key={s.stageNumber}
-                type="button"
-                onClick={() => setActiveStage(s.stageNumber)}
-                className={`rounded border p-2 text-center font-orbitron text-xs transition-all ${
-                  isSolved
-                    ? 'border-skeld-green bg-skeld-green/20 text-skeld-green font-bold'
-                    : isCurrent
-                    ? 'border-skeld-amber bg-skeld-amber/20 text-skeld-amber font-bold ring-2 ring-skeld-amber'
-                    : 'border-white/10 bg-black/40 text-gray-500 hover:text-white'
-                }`}
-              >
-                {isSolved ? '✓ STAGE ' : 'STAGE '} {s.stageNumber}
-              </button>
-            )
-          })}
-        </div>
-
-        {/* ACTIVE STAGE PANEL */}
-        {currentStageData && !result && (
-          <Panel variant="red" className="flex flex-col gap-5">
-            <div className="flex items-center justify-between border-b border-skeld-red/30 pb-3">
-              <div>
-                <span className="font-orbitron text-xs uppercase tracking-wider text-skeld-glow-red">
-                  Logic Gate Module #{currentStageData.stageNumber} of {LOGIC_GATE_STAGES.length}
-                </span>
-                <h2 className="font-orbitron text-xl font-bold text-white">
-                  {currentStageData.title}
-                </h2>
-              </div>
-              <span className={`rounded px-2.5 py-1 font-mono text-xs font-bold uppercase ${
-                solvedStages[currentStageData.stageNumber]
-                  ? 'bg-skeld-green/20 text-skeld-green border border-skeld-green'
-                  : 'bg-skeld-red/20 text-skeld-glow-red border border-skeld-red'
-              }`}>
-                {solvedStages[currentStageData.stageNumber] ? 'DISARMED' : 'ACTIVE THREAT'}
-              </span>
-            </div>
-
-            <p className="font-rajdhani text-gray-300">
-              {currentStageData.description}
-            </p>
-
-            {/* CIRCUIT DIAGRAM */}
-            <div className="rounded border border-white/10 bg-black/80 p-4 font-mono text-sm text-skeld-cyan whitespace-pre leading-relaxed">
-              {currentStageData.diagram}
-            </div>
-
-            {/* INTERACTIVE TOGGLE SWITCHES */}
-            <div className="flex flex-col gap-3">
-              <span className="font-orbitron text-xs uppercase tracking-wider text-gray-300">
-                Configure Logic Terminals (Click to toggle 0 / 1):
-              </span>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                {currentStageData.inputs.map((inp) => {
-                  const currentVal = inputs[currentStageData.stageNumber.toString()]?.[inp.id] ?? inp.defaultVal
-                  return (
-                    <button
-                      key={inp.id}
-                      type="button"
-                      onClick={() => toggleInput(currentStageData.stageNumber, inp.id)}
-                      className={`flex flex-col items-center justify-center rounded border p-4 transition-all ${
-                        currentVal === 1
-                          ? 'border-skeld-cyan bg-skeld-cyan/20 text-skeld-cyan shadow-lg shadow-skeld-cyan/20'
-                          : 'border-white/20 bg-black/60 text-gray-400'
-                      }`}
-                    >
-                      <span className="font-orbitron text-xs font-bold">{inp.label}</span>
-                      <span className="mt-2 font-mono text-3xl font-black">{currentVal}</span>
-                      <span className="mt-1 font-mono text-[10px] text-gray-400">
-                        {currentVal === 1 ? 'HIGH (1)' : 'LOW (0)'}
-                      </span>
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-
-            <p className="font-rajdhani text-xs text-skeld-amber">
-              💡 <strong>Engineering Clue:</strong> {currentStageData.hint}
-            </p>
-
-            {error && (
-              <div className="rounded border border-skeld-red bg-skeld-red/20 p-3 font-rajdhani text-sm text-skeld-glow-red">
-                {error}
-              </div>
-            )}
-
-            <div className="flex gap-3">
-              <Button
-                variant="primary"
-                onClick={handleVerifyCurrentStage}
-                className="flex-1 font-orbitron"
-              >
-                {solvedStages[currentStageData.stageNumber] ? 'RE-VERIFY STAGE' : 'DISARM THIS GATE'}
-              </Button>
-
-              {currentStageData.stageNumber < LOGIC_GATE_STAGES.length && (
-                <Button
-                  variant="ghost"
-                  onClick={() => setActiveStage((p) => p + 1)}
-                  className="font-orbitron text-xs"
-                >
-                  NEXT GATE →
-                </Button>
-              )}
-            </div>
-          </Panel>
-        )}
-
-        {/* MASTER DEFUSAL ACTION */}
-        {allStagesSolved && !result && (
-          <Panel variant="amber" className="flex flex-col items-center gap-4 text-center py-6">
-            <span className="text-4xl">⚡</span>
-            <h3 className="font-orbitron text-xl font-bold text-skeld-amber">
-              ALL 5 LOGIC GATES BYPASSED
-            </h3>
-            <p className="max-w-md font-rajdhani text-sm text-gray-300">
-              The detonator is primed for total disarm. Transmit the master disarm signal to freeze the reactor clock!
-            </p>
-            <Button
-              variant="primary"
-              onClick={handleDefuseBomb}
-              disabled={submitting}
-              className="w-full max-w-sm font-orbitron py-4 text-base"
+        {/* Stage Tabs */}
+        <div className="flex gap-1">
+          {LOGIC_GATE_STAGES.map((s, i) => (
+            <button
+              key={i}
+              onClick={() => setStageIndex(i)}
+              className={`flex-1 rounded py-2 font-orbitron text-xs uppercase transition-colors ${
+                stageIndex === i
+                  ? 'bg-skeld-cyan/20 border border-skeld-cyan text-skeld-cyan'
+                  : solvedStages[i]
+                  ? 'bg-green-900/30 border border-green-500/50 text-green-400'
+                  : 'bg-skeld-void border border-skeld-panel/40 text-gray-400 hover:border-skeld-amber/40'
+              }`}
             >
-              {submitting ? 'TRANSMITTING DISARM...' : 'TRANSMIT FINAL BOMB DEFUSAL'}
-            </Button>
-          </Panel>
-        )}
+              {solvedStages[i] ? '✓' : `S${i + 1}`}
+            </button>
+          ))}
+        </div>
 
-        {/* DEFUSAL SUCCESS BANNER */}
-        {result && (
-          <Panel variant="default" className="flex flex-col items-center gap-4 text-center py-8">
-            <span className="text-6xl">🛡️</span>
-            <h2 className="font-orbitron text-3xl font-black text-skeld-green">
-              BOMB DEFUSED!
+        {/* Current Stage Panel */}
+        <Panel variant="red" className="flex flex-col gap-4">
+          <div className="flex items-center justify-between">
+            <h2 className="font-orbitron text-base font-bold text-skeld-glow-red">
+              {currentStage.title}
             </h2>
-            <p className="font-rajdhani text-lg text-white">
-              Reactor core stabilized successfully in <strong>{formatTimer(timerSeconds)}</strong>!
-            </p>
-            {result.rank && (
-              <div className="rounded border border-skeld-green/40 bg-skeld-green/20 px-6 py-3 font-orbitron text-xl font-bold text-white">
-                Rank #{result.rank} — Earned {result.points} Points!
-              </div>
-            )}
-            <div className="mt-4 flex justify-center">
-              <Link
-                href="/tasks/4"
-                className="inline-flex items-center justify-center gap-2 rounded bg-skeld-green px-8 py-4 font-orbitron text-base font-bold text-black transition-all hover:bg-white hover:scale-105"
-              >
-                PROCEED TO TASK 4: SHUFFLING PROTOCOL →
-              </Link>
-            </div>
-          </Panel>
-        )}
+            <span className="font-orbitron text-xs text-gray-400">{currentStage.gateType}</span>
+          </div>
+          <p className="font-rajdhani text-sm text-gray-300">{currentStage.description}</p>
 
-        <div className="flex justify-center">
-          <Link
-            href="/player"
-            className="font-rajdhani text-sm text-gray-400 hover:text-skeld-cyan"
+          {/* Input Toggles */}
+          <div className="flex flex-wrap gap-3">
+            {currentStage.inputs.map((inp) => {
+              const val = stagesInputs[stageIndex][inp.label]
+              return (
+                <button
+                  key={inp.label}
+                  onClick={() => toggleInput(inp.label)}
+                  className={`flex flex-col items-center gap-1 rounded border px-4 py-3 font-mono text-lg font-bold transition-all ${
+                    val === 1
+                      ? 'border-green-400 bg-green-900/40 text-green-300'
+                      : 'border-skeld-red/50 bg-skeld-red/10 text-gray-400 hover:border-skeld-red/80'
+                  }`}
+                >
+                  <span className="font-orbitron text-xs text-gray-400">{inp.label}</span>
+                  <span>{val}</span>
+                </button>
+              )
+            })}
+          </div>
+
+          <div className="rounded border border-gray-600/40 bg-skeld-void/50 px-4 py-3 text-center">
+            <span className="font-orbitron text-xs text-gray-400 uppercase">Target Output: </span>
+            <span className="font-mono text-2xl font-bold text-green-400">{currentStage.expectedOutput}</span>
+          </div>
+
+          {stageErrors[stageIndex] && (
+            <p className="font-rajdhani text-sm text-skeld-red">{stageErrors[stageIndex]}</p>
+          )}
+          {solvedStages[stageIndex] && (
+            <p className="font-rajdhani text-sm text-green-400">✓ Stage {stageIndex + 1} solved!</p>
+          )}
+
+          {!solvedStages[stageIndex] && (
+            <Button variant="danger" onClick={verifyCurrentStage}>
+              VERIFY STAGE {stageIndex + 1}
+            </Button>
+          )}
+        </Panel>
+
+        {/* Final Submit */}
+        <Panel className="flex flex-col gap-3">
+          <div className="flex justify-between text-xs font-orbitron text-gray-400 uppercase">
+            <span>Stages Complete: {solvedStages.filter(Boolean).length}/5</span>
+          </div>
+          {error && <p className="font-rajdhani text-sm text-skeld-red">{error}</p>}
+          <Button
+            variant="primary"
+            onClick={handleFinalSubmit}
+            disabled={submitting || !solvedStages.every(Boolean)}
           >
-            ← Return to Crew Command Hub
-          </Link>
+            {submitting ? 'Defusing...' : 'SUBMIT ALL STAGES — DEFUSE BOMB'}
+          </Button>
+        </Panel>
+
+        <div className="text-center">
+          <Link href="/player" className="font-rajdhani text-sm text-skeld-cyan hover:underline">← Return to Player Hub</Link>
         </div>
       </div>
     </main>
