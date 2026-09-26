@@ -51,7 +51,7 @@ export default function LandingPage() {
             26 September · 5 PM · NAB
           </p>
           <div className="mt-8">
-            <Link href="/login">
+            <Link href="/register">
               <Button size="default" variant="primary">Enter / Register</Button>
             </Link>
           </div>
@@ -89,7 +89,7 @@ export default function LandingPage() {
             <Panel className="flex flex-col items-center gap-4 text-center">
               <StatusPill status="open" />
               <h3 className="font-rajdhani text-xl font-bold text-white">System Unlocked</h3>
-              <Link href="/login" className="w-full">
+              <Link href="/register" className="w-full">
                 <Button variant="danger" className="w-full">Enter the Ship</Button>
               </Link>
             </Panel>
