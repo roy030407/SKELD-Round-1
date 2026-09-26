@@ -16,6 +16,8 @@
     "seed:teams": "npx tsx scripts/seed-teams.ts"
   },
   "dependencies": {
+    "@neon/config": "^1.8.2",
+    "@neon/env": "^1.4.7",
     "clsx": "^2.1.1",
     "d3-dsv": "^3.0.1",
     "dotenv": "^18.0.4",
