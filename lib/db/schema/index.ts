@@ -62,6 +62,10 @@ export const registrationSettings = pgTable('registration_settings', {
   bombDefusalLink: text('bomb_defusal_link').default('https://vedant-jadhav-23.github.io/BombDefusalTask/'),
   bettingOpen: boolean('betting_open').notNull().default(false),
   betsSettled: boolean('bets_settled').notNull().default(false),
+  // Admin-controlled reveal: the projector shows a holding screen until this
+  // is flipped on, so standings can be shown at a chosen moment rather than
+  // continuously updating live in front of the room.
+  leaderboardVisible: boolean('leaderboard_visible').notNull().default(false),
 }).enableRLS()
 
 export const rateLimitCounters = pgTable('rate_limit_counters', {

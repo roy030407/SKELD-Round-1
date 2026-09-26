@@ -11,7 +11,8 @@ import { NextRequest } from 'next/server'
 // Confirms the B5 fix directly: an unauthenticated request is rejected before
 // ever reaching getLeaderboard(), a plain player session never receives the
 // full leaderboard even when it supplies the old `?source=projector` bypass
-// query param, and only a real staff/display session gets the full board.
+// query param, and only a real staff session (admin/monitor unconditionally,
+// display only once admin's reveal toggle is on) gets the full board.
 
 let currentCookieToken: string | null = null
 
@@ -44,10 +45,23 @@ vi.mock('@/lib/scoring/ledger', () => ({
   ],
 }))
 
-vi.mock('@/lib/db/client', () => ({ db: {} }))
+// The display-role branch now also reads registrationSettings.leaderboardVisible
+// (the admin-controlled projector reveal toggle), so `db` needs a minimal
+// chainable select().from().where() that resolves to a controllable row.
+let mockLeaderboardVisible = false
+vi.mock('@/lib/db/client', () => ({
+  db: {
+    select: () => ({
+      from: () => ({
+        where: async () => [{ leaderboardVisible: mockLeaderboardVisible }],
+      }),
+    }),
+  },
+}))
 
 beforeEach(() => {
   currentCookieToken = null
+  mockLeaderboardVisible = false
 })
 
 function requestWithQuery(query: string) {
@@ -100,12 +114,24 @@ test('real admin session -> full leaderboard', async () => {
   expect(data.leaderboard).toHaveLength(2)
 })
 
-test('real display (projector) session -> full leaderboard without needing the query param', async () => {
+test('real display (projector) session, reveal OFF -> holding screen, no team data leaked', async () => {
   const { GET } = await import('@/app/api/leaderboard/route')
   currentCookieToken = 'display-token'
+  mockLeaderboardVisible = false
   const res = await GET(requestWithQuery(''))
   expect(res.status).toBe(200)
   const data = await res.json()
-  expect(data.hiddenForPlayers).toBe(false)
+  expect(data.revealed).toBe(false)
+  expect(data.leaderboard).toEqual([])
+})
+
+test('real display (projector) session, admin has revealed -> full leaderboard', async () => {
+  const { GET } = await import('@/app/api/leaderboard/route')
+  currentCookieToken = 'display-token'
+  mockLeaderboardVisible = true
+  const res = await GET(requestWithQuery(''))
+  expect(res.status).toBe(200)
+  const data = await res.json()
+  expect(data.revealed).toBe(true)
   expect(data.leaderboard).toHaveLength(2)
 })

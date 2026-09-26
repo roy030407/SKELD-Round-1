@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { EmergencyBanner } from '@/components/ui/emergency-banner'
 import Link from 'next/link'
 
-type Tab = 'quiz' | 'bombdefusal' | 'betting' | 'task4' | 'settling' | 'gates'
+type Tab = 'quiz' | 'bombdefusal' | 'betting' | 'task4' | 'settling' | 'gates' | 'leaderboard'
 
 export default function AdminPage() {
   const [tab, setTab] = useState<Tab>('quiz')
@@ -45,11 +45,25 @@ export default function AdminPage() {
   const [gateLoading, setGateLoading] = useState(false)
   const [gateMsg, setGateMsg] = useState('')
 
+  // --- Leaderboard reveal + manual score adjustment State ---
+  const [leaderboardVisible, setLeaderboardVisible] = useState(false)
+  const [lbLoading, setLbLoading] = useState(false)
+  const [lbMsg, setLbMsg] = useState('')
+  const [adjTeams, setAdjTeams] = useState<{ id: string; code: string; name: string; totalPoints: number }[]>([])
+  const [adjHistory, setAdjHistory] = useState<{ id: string; teamCode: string; points: number; reason: string | null; createdAt: string }[]>([])
+  const [adjTeamId, setAdjTeamId] = useState('')
+  const [adjPoints, setAdjPoints] = useState('')
+  const [adjReason, setAdjReason] = useState('')
+  const [adjLoading, setAdjLoading] = useState(false)
+  const [adjMsg, setAdjMsg] = useState('')
+
   useEffect(() => {
     loadQuizState()
     loadBombDefusalState()
     loadBettingState()
     loadGateState()
+    loadLeaderboardVisibility()
+    loadAdjustmentState()
   }, [])
 
   async function loadQuizState() {
@@ -79,6 +93,63 @@ export default function AdminPage() {
       setBetList(data.bets ?? [])
       setBetsSettled(data.betsSettled ?? false)
     }
+  }
+
+  async function loadLeaderboardVisibility() {
+    const res = await fetch('/api/admin/leaderboard-visibility')
+    if (res.ok) setLeaderboardVisible((await res.json()).visible ?? false)
+  }
+
+  async function handleToggleLeaderboard(visible: boolean) {
+    setLbLoading(true)
+    setLbMsg('')
+    const res = await fetch('/api/admin/leaderboard-visibility', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ visible }),
+    })
+    if (res.ok) {
+      setLeaderboardVisible(visible)
+      setLbMsg(visible ? '✓ Standings are now LIVE on the projector.' : '✓ Projector is back to the holding screen.')
+    } else {
+      setLbMsg('Failed to update - try again.')
+    }
+    setLbLoading(false)
+  }
+
+  async function loadAdjustmentState() {
+    const res = await fetch('/api/admin/score-adjustment')
+    if (res.ok) {
+      const data = await res.json()
+      setAdjTeams(data.teams ?? [])
+      setAdjHistory(data.history ?? [])
+      if (!adjTeamId && data.teams?.length) setAdjTeamId(data.teams[0].id)
+    }
+  }
+
+  async function handleSubmitAdjustment() {
+    const points = parseInt(adjPoints, 10)
+    if (!adjTeamId || Number.isNaN(points) || points === 0 || !adjReason.trim()) {
+      setAdjMsg('Pick a team, a non-zero point delta, and a reason.')
+      return
+    }
+    setAdjLoading(true)
+    setAdjMsg('')
+    const res = await fetch('/api/admin/score-adjustment', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ teamId: adjTeamId, points, reason: adjReason.trim() }),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (res.ok) {
+      setAdjMsg('✓ Adjustment recorded.')
+      setAdjPoints('')
+      setAdjReason('')
+      await loadAdjustmentState()
+    } else {
+      setAdjMsg(data.error || 'Failed to record adjustment.')
+    }
+    setAdjLoading(false)
   }
 
   async function handleSaveQuizLink() {
@@ -244,6 +315,7 @@ export default function AdminPage() {
           <button className={tabClass('task4')} onClick={() => setTab('task4')}>Task 4 Shuffle</button>
           <button className={tabClass('settling')} onClick={() => setTab('settling')}>Settle Bets</button>
           <button className={tabClass('gates')} onClick={() => setTab('gates')}>Task Gates</button>
+          <button className={tabClass('leaderboard')} onClick={() => setTab('leaderboard')}>Leaderboard</button>
         </div>
 
         {/* === Round 1 Quiz Tab === */}
@@ -487,6 +559,92 @@ export default function AdminPage() {
                 {gateMsg}
               </p>
             )}
+          </Panel>
+        )}
+        {/* === Leaderboard Reveal + Manual Adjustment Tab === */}
+        {tab === 'leaderboard' && (
+          <Panel className="flex flex-col gap-6">
+            <div className="flex flex-col gap-3">
+              <h2 className="font-orbitron text-lg font-bold text-skeld-amber">Projector Reveal</h2>
+              <p className="font-rajdhani text-sm text-gray-300">
+                The projector (/display) holds a waiting screen until you flip this on. Admin/monitor always
+                see live standings regardless of this toggle.
+              </p>
+              <div className="flex items-center gap-3">
+                <span className={`font-orbitron text-xs uppercase ${leaderboardVisible ? 'text-green-400' : 'text-gray-400'}`}>
+                  Projector is currently {leaderboardVisible ? 'SHOWING STANDINGS' : 'ON HOLDING SCREEN'}
+                </span>
+                <Button
+                  variant={leaderboardVisible ? 'ghost' : 'primary'}
+                  onClick={() => handleToggleLeaderboard(!leaderboardVisible)}
+                  disabled={lbLoading}
+                >
+                  {leaderboardVisible ? 'HIDE STANDINGS' : 'REVEAL STANDINGS ON PROJECTOR'}
+                </Button>
+              </div>
+              {lbMsg && (
+                <p className={`font-rajdhani text-sm ${lbMsg.startsWith('✓') ? 'text-green-400' : 'text-skeld-red'}`}>
+                  {lbMsg}
+                </p>
+              )}
+            </div>
+
+            <div className="border-t border-skeld-panel/40 pt-6 flex flex-col gap-3">
+              <h2 className="font-orbitron text-lg font-bold text-skeld-cyan">Manual Score Adjustment</h2>
+              <p className="font-rajdhani text-sm text-gray-300">
+                Appends a correction to the score ledger - it never overwrites anything (totals are always
+                summed live from every recorded event). Use this to fix a mis-entered task score after the fact.
+              </p>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <select
+                  value={adjTeamId}
+                  onChange={(e) => setAdjTeamId(e.target.value)}
+                  className="rounded border border-skeld-panel bg-skeld-void px-3 py-2 font-rajdhani text-sm text-white flex-1"
+                >
+                  {adjTeams.map((t) => (
+                    <option key={t.id} value={t.id}>{t.code} — {t.name} (total: {t.totalPoints})</option>
+                  ))}
+                </select>
+                <input
+                  type="number"
+                  placeholder="± points"
+                  value={adjPoints}
+                  onChange={(e) => setAdjPoints(e.target.value)}
+                  className="w-28 rounded border border-skeld-panel bg-skeld-void px-3 py-2 font-mono text-sm text-white"
+                />
+              </div>
+              <input
+                type="text"
+                placeholder="Reason (required, e.g. Corrected Task 3 score - admin mistyped 20 instead of 25)"
+                value={adjReason}
+                onChange={(e) => setAdjReason(e.target.value)}
+                className="rounded border border-skeld-panel bg-skeld-void px-3 py-2 font-rajdhani text-sm text-white"
+              />
+              <Button variant="primary" onClick={handleSubmitAdjustment} disabled={adjLoading} className="self-start">
+                {adjLoading ? 'Recording...' : 'RECORD ADJUSTMENT'}
+              </Button>
+              {adjMsg && (
+                <p className={`font-rajdhani text-sm ${adjMsg.startsWith('✓') ? 'text-green-400' : 'text-skeld-red'}`}>
+                  {adjMsg}
+                </p>
+              )}
+
+              {adjHistory.length > 0 && (
+                <div className="mt-2 flex flex-col gap-1">
+                  <span className="font-orbitron text-xs text-gray-400 uppercase">Recent adjustments</span>
+                  {adjHistory.map((h) => (
+                    <div key={h.id} className="flex items-center gap-3 rounded border border-skeld-panel/30 px-3 py-2 text-sm font-rajdhani">
+                      <span className="font-mono text-skeld-cyan">{h.teamCode}</span>
+                      <span className={h.points > 0 ? 'text-green-400' : 'text-skeld-red'}>
+                        {h.points > 0 ? `+${h.points}` : h.points}
+                      </span>
+                      <span className="flex-1 text-gray-400">{h.reason}</span>
+                      <span className="text-xs text-gray-500">{new Date(h.createdAt).toLocaleTimeString()}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </Panel>
         )}
       </div>

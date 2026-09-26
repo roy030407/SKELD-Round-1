@@ -6,6 +6,7 @@ import { Panel } from '@/components/ui/panel'
 
 export default function ProjectorDisplayPage() {
   const [teams, setTeams] = useState<any[]>([])
+  const [revealed, setRevealed] = useState(true)
   const [lastUpdated, setLastUpdated] = useState<string>('')
 
   const fetchLeaderboard = async () => {
@@ -14,6 +15,7 @@ export default function ProjectorDisplayPage() {
       if (res.ok) {
         const data = await res.json()
         setTeams(data.leaderboard || [])
+        setRevealed(data.revealed !== false)
         setLastUpdated(new Date().toLocaleTimeString())
       }
     } catch (err) {
@@ -26,6 +28,17 @@ export default function ProjectorDisplayPage() {
     const interval = setInterval(fetchLeaderboard, 3000)
     return () => clearInterval(interval)
   }, [])
+
+  if (!revealed) {
+    return (
+      <main className="flex min-h-screen flex-col items-center justify-center bg-skeld-void text-white">
+        <EmergencyBanner text="PROJECT SKELD: NAB PROJECTOR LEADERBOARD" size="projector" />
+        <p className="mt-16 font-orbitron text-3xl text-skeld-amber animate-pulse">
+          STANDINGS WILL BE REVEALED SHORTLY
+        </p>
+      </main>
+    )
+  }
 
   return (
     <main className="flex min-h-screen flex-col items-center bg-skeld-void pb-24 text-white">

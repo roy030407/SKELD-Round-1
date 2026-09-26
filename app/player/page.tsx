@@ -9,18 +9,31 @@ import Link from 'next/link'
 
 export default function PlayerHubPage() {
   const [loading, setLoading] = useState(true)
-  const [profile, setProfile] = useState<any>(null)
+  const [teamStatus, setTeamStatus] = useState<{ checkedInCount: number; totalPlayers: number; isFullyCheckedIn: boolean } | null>(null)
+  const [justRegisteredCode, setJustRegisteredCode] = useState<string | null>(null)
 
   useEffect(() => {
-    // Check if session exists
+    // Registration now checks the player in automatically (arriving at the
+    // venue in person and registering IS check-in), so this is read-only
+    // team-roster info, not a manual "confirm" action anymore.
     fetch('/api/check-in/status')
-      .then((res) => {
-        if (!res.ok && res.status === 401) {
-          window.location.href = '/login'
+      .then(async (res) => {
+        if (!res.ok) {
+          if (res.status === 401) window.location.href = '/login'
+          return
         }
+        const data = await res.json()
+        if (data.status) setTeamStatus(data.status)
       })
       .catch(console.error)
       .finally(() => setLoading(false))
+
+    // One-time "save this" banner right after registering, then never again.
+    const code = sessionStorage.getItem('justRegisteredCode')
+    if (code) {
+      setJustRegisteredCode(code)
+      sessionStorage.removeItem('justRegisteredCode')
+    }
   }, [])
 
   return (
@@ -28,6 +41,16 @@ export default function PlayerHubPage() {
       <EmergencyBanner text="PLAYER COMMAND HUB" />
 
       <div className="mt-8 flex w-full max-w-2xl flex-col gap-6 px-4">
+        {justRegisteredCode && (
+          <Panel variant="red" className="flex flex-col gap-1 text-center">
+            <span className="font-orbitron text-xs font-bold text-skeld-red">SAVE YOUR PLAYER CODE</span>
+            <p className="font-mono text-2xl font-bold text-white">{justRegisteredCode}</p>
+            <p className="font-rajdhani text-xs text-gray-400">
+              You&apos;ll need this plus your roll number to log back in on another device.
+            </p>
+          </Panel>
+        )}
+
         <Panel variant="amber" className="flex flex-col gap-4">
           <div className="flex items-center justify-between border-b border-skeld-amber/30 pb-3">
             <div>
@@ -46,21 +69,21 @@ export default function PlayerHubPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
-            {/* Stage 0: Check-In */}
+            {/* Team status - check-in happens automatically at registration now,
+                this is just a live view of who else on the team has arrived. */}
             <div className="flex flex-col justify-between rounded-lg border border-skeld-cyan/40 bg-skeld-panel p-4">
               <div>
                 <div className="flex items-center justify-between">
-                  <span className="font-orbitron text-xs font-bold text-skeld-cyan">STAGE 0</span>
-                  <StatusPill status="open" />
+                  <span className="font-orbitron text-xs font-bold text-skeld-cyan">CREW STATUS</span>
+                  <StatusPill status={teamStatus?.isFullyCheckedIn ? 'complete' : 'waiting'} />
                 </div>
-                <h3 className="font-orbitron text-base font-bold text-white mt-2">Team Check-In</h3>
+                <h3 className="font-orbitron text-base font-bold text-white mt-2">
+                  {teamStatus ? `${teamStatus.checkedInCount}/${teamStatus.totalPlayers} crewmates here` : 'Loading...'}
+                </h3>
                 <p className="font-rajdhani text-xs text-gray-400 mt-1">
-                  All 6 crewmates in your team must confirm check-in.
+                  Tasks unlock once your whole team has registered.
                 </p>
               </div>
-              <Link href="/check-in" className="mt-4">
-                <Button variant="primary" className="w-full text-xs">GO TO CHECK-IN →</Button>
-              </Link>
             </div>
 
             {/* Task 1: Quiz + Betting */}

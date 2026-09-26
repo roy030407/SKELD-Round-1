@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getLeaderboard } from '@/lib/scoring/ledger'
 import { requireSession } from '@/lib/auth/guard'
+import { db } from '@/lib/db/client'
+import { registrationSettings } from '@/lib/db/schema'
+import { eq } from 'drizzle-orm'
 
 export const dynamic = 'force-dynamic'
 
@@ -17,8 +20,19 @@ export async function GET(req: NextRequest) {
 
     const fullLeaderboard = await getLeaderboard()
 
-    // Only staff (admin/monitor) or the display role (projector screen) get
-    // the full live leaderboard.
+    if (session.role === 'display') {
+      // The projector specifically waits for admin's reveal toggle, so
+      // standings can be shown at a chosen moment instead of ticking live
+      // in front of the room the whole event. Admin/monitor are unaffected -
+      // they need live numbers to actually run the event.
+      const [settings] = await db.select().from(registrationSettings).where(eq(registrationSettings.id, 1))
+      if (!settings?.leaderboardVisible) {
+        return NextResponse.json({ leaderboard: [], revealed: false })
+      }
+      return NextResponse.json({ leaderboard: fullLeaderboard, revealed: true })
+    }
+
+    // Only staff (admin/monitor) get the full live leaderboard unconditionally.
     if (isStaff) {
       return NextResponse.json({
         leaderboard: fullLeaderboard,

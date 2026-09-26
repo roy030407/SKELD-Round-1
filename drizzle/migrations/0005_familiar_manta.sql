@@ -1,0 +1,1 @@
+ALTER TABLE "registration_settings" ADD COLUMN "leaderboard_visible" boolean DEFAULT false NOT NULL;

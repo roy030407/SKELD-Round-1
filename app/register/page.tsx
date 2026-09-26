@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { Panel } from '@/components/ui/panel'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
@@ -13,7 +12,6 @@ export default function Register() {
   const [formData, setFormData] = useState({ firstName: '', rollNumber: '', teamCode: '', email: '' })
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
-  const router = useRouter()
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -27,8 +25,13 @@ export default function Register() {
 
     if (res.ok) {
       const data = await res.json()
-      sessionStorage.setItem('playerCode', data.playerCode)
-      router.push('/register/success')
+      // Registration now logs the player straight into their own session and
+      // checks them in (arriving in person at the venue IS check-in) - no
+      // separate "here's your code, now go log in, now confirm check-in"
+      // maze. Stash the code so the player hub can show a one-time "save
+      // this" banner, then take them straight there.
+      sessionStorage.setItem('justRegisteredCode', data.playerCode)
+      window.location.href = '/player'
     } else {
       // The API returns raw zod issue arrays on validation failure; showing
       // that JSON to a fresher is useless, so surface just the messages.

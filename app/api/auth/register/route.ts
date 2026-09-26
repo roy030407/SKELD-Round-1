@@ -4,6 +4,9 @@ import { eq, and } from 'drizzle-orm'
 import { rateLimit } from '../../../../lib/security/rate-limit'
 import { assertSameOrigin } from '../../../../lib/security/csrf'
 import { generatePlayerCode } from '../../../../lib/registration/player-code'
+import { createSession, sealSessionId } from '../../../../lib/auth/session'
+import { checkInPlayer } from '../../../../lib/gating'
+import { cookies } from 'next/headers'
 import { z } from 'zod'
 
 const registerSchema = z.object({
@@ -66,10 +69,24 @@ export async function POST(req: Request) {
         newValue: player
       })
       
-      return { playerCode, teamName: team.name }
+      return { playerCode, teamName: team.name, playerId: player.id, teamId: team.id, isLeader: player.isLeader }
     })
-    
-    return Response.json(result)
+
+    // Registering in person at the venue IS arriving, so treat it as
+    // check-in and log the player straight into their own session instead
+    // of making them copy a code, then go log in, then confirm a separate
+    // "check in" button - three steps for something that already happened
+    // the moment they filled this form out on their own phone.
+    await checkInPlayer(result.playerId)
+
+    const session = await db.transaction(async (tx) =>
+      createSession(tx, { playerId: result.playerId, role: result.isLeader ? 'leader' : 'player', teamId: result.teamId })
+    )
+    const token = await sealSessionId(session.id)
+    const c = await cookies()
+    c.set('session', token, { httpOnly: true, secure: true, sameSite: 'strict', path: '/', maxAge: 12 * 60 * 60 })
+
+    return Response.json({ playerCode: result.playerCode, teamName: result.teamName })
   } catch (err: any) {
     return new Response(err.message, { status: 400 })
   }
