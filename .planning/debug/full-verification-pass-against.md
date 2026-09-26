@@ -930,3 +930,9 @@ files_changed (Phase 4):
   - README.md (tech stack bullet updated)
   - app/api/admin/task-gate/route.ts (new — admin gate open/close, all-teams or per-team)
   - app/admin/page.tsx (new "Task Gates" tab)
+
+## Phase 5 addendum (2026-09-26): Properly fix CSP nonce propagation instead of relaxing script-src
+
+**Human directive, correcting Phase 4's emergency trade-off:** Revert the `script-src` relaxation to `'unsafe-inline'` committed in `d883a4d`. Do NOT use `unsafe-inline` for script-src under any circumstance. Root-cause and fix the actual bug instead: Next.js 16.3.6's own internal hydration/injected `<script>` tags were not receiving the matching per-request nonce, which is what caused the CSP violations and downstream React hydration error #412 (every form on the site was effectively broken - clicks fell back to native form submission instead of the React handler).
+
+next_action: Execute exactly the 4-step fix + 2-check verification plan below. Do not report done until both verification checks pass for real, with evidence.
