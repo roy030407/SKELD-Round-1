@@ -8,8 +8,10 @@ import { z } from 'zod'
 import { cookies } from 'next/headers'
 
 const loginSchema = z.object({
-  playerCode: z.string(),
-  rollNumber: z.string()
+  playerCode: z.string().transform((s) => s.trim().toUpperCase()),
+  // Must normalise identically to registration, or a player who typed their
+  // roll in lower case at login would never match the stored value.
+  rollNumber: z.string().transform((s) => s.trim().toUpperCase())
 })
 
 export async function POST(req: Request) {

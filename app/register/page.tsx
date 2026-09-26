@@ -30,7 +30,21 @@ export default function Register() {
       sessionStorage.setItem('playerCode', data.playerCode)
       router.push('/register/success')
     } else {
-      setError(await res.text())
+      // The API returns raw zod issue arrays on validation failure; showing
+      // that JSON to a fresher is useless, so surface just the messages.
+      const raw = (await res.text()).trim()
+      let friendly = raw
+      try {
+        const parsed = JSON.parse(raw)
+        if (Array.isArray(parsed)) {
+          friendly = parsed.map((i: any) => i.message).filter(Boolean).join(' ')
+        } else if (parsed?.error) {
+          friendly = parsed.error
+        }
+      } catch {
+        // not JSON - the API also returns plain-text errors like "Team is full"
+      }
+      setError(friendly || 'Registration failed. Please check your details.')
       setSubmitting(false)
     }
   }

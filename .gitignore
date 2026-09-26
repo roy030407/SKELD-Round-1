@@ -41,3 +41,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .neon
+
+# local dry-run/verification scripts (may contain credentials)
+scripts/_*

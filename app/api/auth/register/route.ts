@@ -8,7 +8,15 @@ import { z } from 'zod'
 
 const registerSchema = z.object({
   firstName: z.string().min(1),
-  rollNumber: z.string().regex(/^[0-9]{2}[A-Z]{3}[0-9]{4}$/),
+  // Real NITW roll numbers carry letters in the tail (e.g. 24MAB0A29), which
+  // the previous /^[0-9]{2}[A-Z]{3}[0-9]{4}$/ rejected outright - no actual
+  // student could register. Roll format is not a security boundary here, so
+  // accept any reasonable alphanumeric roll and normalise case/whitespace so
+  // it matches at login.
+  rollNumber: z
+    .string()
+    .transform((s) => s.trim().toUpperCase())
+    .pipe(z.string().regex(/^[A-Z0-9]{4,20}$/, 'Enter your roll number, e.g. 24MAB0A29')),
   teamCode: z.string(),
   email: z.string().email()
 })
