@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { env } from './lib/env';
 
-const PROTECTED_PATHS = ['/player', '/leader', '/monitor', '/admin', '/display', '/leaderboard', '/api/leaderboard'];
+const PROTECTED_PATHS = ['/player', '/leader', '/monitor', '/admin', '/display', '/leaderboard', '/api/leaderboard', '/check-in', '/tasks'];
 const PUBLIC_PATHS = ['/', '/login', '/register', '/api/auth/login', '/api/auth/register', '/api/teams'];
 
 export function proxy(request: NextRequest) {

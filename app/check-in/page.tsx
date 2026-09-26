@@ -54,12 +54,28 @@ export default function CheckInPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       })
-      const data = await res.json()
+
+      if (res.status === 401) {
+        window.location.href = '/login'
+        return
+      }
+
+      // Error responses from the API guards are plain text, not JSON, so
+      // parsing unconditionally throws "Unexpected token 'U'" instead of
+      // showing the real problem.
+      const raw = await res.text()
+      let data: any = null
+      try {
+        data = raw ? JSON.parse(raw) : null
+      } catch {
+        data = null
+      }
+
       if (res.ok) {
-        setMessage(data.message)
-        if (data.teamStatus) setStatus(data.teamStatus)
+        setMessage(data?.message ?? 'Checked in.')
+        if (data?.teamStatus) setStatus(data.teamStatus)
       } else {
-        setError(data.error || 'Failed to check in')
+        setError(data?.error || raw || 'Failed to check in')
       }
     } catch (err: any) {
       setError(err.message || 'Network error')
