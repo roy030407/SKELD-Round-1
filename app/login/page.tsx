@@ -29,7 +29,8 @@ export default function LoginPage() {
       headers: { 'Content-Type': 'application/json' },
     })
     if (!res.ok) {
-      setError('Login failed. Check your player code and roll number.')
+      const detail = (await res.text()).trim()
+      setError(detail || 'Login failed. Check your player code and roll number.')
       setSubmitting(false)
     } else {
       window.location.href = '/'
@@ -46,7 +47,8 @@ export default function LoginPage() {
       headers: { 'Content-Type': 'application/json' },
     })
     if (!res.ok) {
-      setError('Login failed. Check your staff username and password.')
+      const detail = (await res.text()).trim()
+      setError(detail || 'Login failed. Check your staff username and password.')
       setSubmitting(false)
     } else {
       window.location.href = '/'
