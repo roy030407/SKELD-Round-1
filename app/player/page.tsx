@@ -63,24 +63,24 @@ export default function PlayerHubPage() {
               </Link>
             </div>
 
-            {/* Stage 1: Imposter Game */}
-            <div className="flex flex-col justify-between rounded-lg border border-skeld-red/40 bg-skeld-panel p-4">
+            {/* Task 1: Quiz + Betting */}
+            <div className="flex flex-col justify-between rounded-lg border border-skeld-cyan/40 bg-skeld-panel p-4">
               <div>
                 <div className="flex items-center justify-between">
-                  <span className="font-orbitron text-xs font-bold text-skeld-red">TASK 1</span>
-                  <StatusPill status="open" />
+                  <span className="font-orbitron text-xs font-bold text-skeld-cyan">TASK 1</span>
+                  <StatusPill status="waiting" />
                 </div>
-                <h3 className="font-orbitron text-base font-bold text-white mt-2">Imposter Word Game</h3>
+                <h3 className="font-orbitron text-base font-bold text-white mt-2">Quiz &amp; Betting</h3>
                 <p className="font-rajdhani text-xs text-gray-400 mt-1">
-                  Receive secret word, debate tablemates, and catch the imposter.
+                  Complete the mission quiz, then bet on your final rank.
                 </p>
               </div>
               <Link href="/tasks/1" className="mt-4">
-                <Button variant="danger" className="w-full text-xs">ENTER AIRLOCK →</Button>
+                <Button variant="ghost" className="w-full text-xs">OPEN QUIZ →</Button>
               </Link>
             </div>
 
-            {/* Stage 2: Cipher */}
+            {/* Task 2: Cipher */}
             <div className="flex flex-col justify-between rounded-lg border border-skeld-panel bg-skeld-void/60 p-4">
               <div>
                 <div className="flex items-center justify-between">
@@ -97,7 +97,7 @@ export default function PlayerHubPage() {
               </Link>
             </div>
 
-            {/* Stage 3: Bomb Defusal */}
+            {/* Task 3: Bomb Defusal */}
             <div className="flex flex-col justify-between rounded-lg border border-skeld-panel bg-skeld-void/60 p-4">
               <div>
                 <div className="flex items-center justify-between">
@@ -113,21 +113,23 @@ export default function PlayerHubPage() {
                 <Button variant="ghost" className="w-full text-xs">DEFUSAL MODULE →</Button>
               </Link>
             </div>
-          </div>
 
-          {/* Leaderboard CTA */}
-          <div className="mt-4 rounded border border-skeld-panel bg-skeld-void/80 p-4 flex items-center justify-between">
-            <div>
-              <span className="font-orbitron text-sm font-bold text-skeld-amber">
-                Official Leaderboard
-              </span>
-              <p className="font-rajdhani text-xs text-gray-400">
-                Track live team rankings and Round 2 qualification.
-              </p>
+            {/* Task 4: Imposter Game */}
+            <div className="flex flex-col justify-between rounded-lg border border-skeld-red/40 bg-skeld-panel p-4">
+              <div>
+                <div className="flex items-center justify-between">
+                  <span className="font-orbitron text-xs font-bold text-skeld-red">TASK 4</span>
+                  <StatusPill status="waiting" />
+                </div>
+                <h3 className="font-orbitron text-base font-bold text-white mt-2">Imposter Word Game</h3>
+                <p className="font-rajdhani text-xs text-gray-400 mt-1">
+                  Receive secret word, debate tablemates, and catch the imposter.
+                </p>
+              </div>
+              <Link href="/tasks/4" className="mt-4">
+                <Button variant="danger" className="w-full text-xs">ENTER AIRLOCK →</Button>
+              </Link>
             </div>
-            <Link href="/leaderboard">
-              <Button variant="primary" className="text-xs">VIEW STANDINGS</Button>
-            </Link>
           </div>
         </Panel>
       </div>

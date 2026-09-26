@@ -16,8 +16,8 @@ export function proxy(request: NextRequest) {
   
   const csp = `
     default-src 'self';
-    script-src 'self' 'nonce-${nonce}';
-    style-src 'self' 'nonce-${nonce}';
+    script-src 'self' 'unsafe-inline';
+    style-src 'self' 'unsafe-inline';
     font-src 'self';
     img-src 'self' data:;
     frame-ancestors 'none';
