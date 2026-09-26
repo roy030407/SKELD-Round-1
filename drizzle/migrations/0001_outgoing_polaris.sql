@@ -73,8 +73,8 @@ ALTER TABLE "votes" DROP CONSTRAINT "votes_target_player_id_players_id_fk";
 DROP INDEX "players_code_idx";--> statement-breakpoint
 DROP INDEX "staff_username_idx";--> statement-breakpoint
 DROP INDEX "teams_code_idx";--> statement-breakpoint
-ALTER TABLE "audit_log" ALTER COLUMN "old_value" SET DATA TYPE jsonb;--> statement-breakpoint
-ALTER TABLE "audit_log" ALTER COLUMN "new_value" SET DATA TYPE jsonb;--> statement-breakpoint
+ALTER TABLE "audit_log" ALTER COLUMN "old_value" SET DATA TYPE jsonb USING "old_value"::jsonb;--> statement-breakpoint
+ALTER TABLE "audit_log" ALTER COLUMN "new_value" SET DATA TYPE jsonb USING "new_value"::jsonb;--> statement-breakpoint
 ALTER TABLE "audit_log" ALTER COLUMN "created_at" SET DATA TYPE timestamp with time zone;--> statement-breakpoint
 ALTER TABLE "audit_log" ALTER COLUMN "created_at" SET DEFAULT now();--> statement-breakpoint
 ALTER TABLE "bets" ALTER COLUMN "placed_at" SET DATA TYPE timestamp with time zone;--> statement-breakpoint
@@ -84,12 +84,12 @@ ALTER TABLE "check_ins" ALTER COLUMN "checked_in_at" SET DEFAULT now();--> state
 ALTER TABLE "game_sessions" ALTER COLUMN "status" DROP DEFAULT;--> statement-breakpoint
 ALTER TABLE "game_table_players" ALTER COLUMN "word" DROP NOT NULL;--> statement-breakpoint
 ALTER TABLE "game_table_players" ALTER COLUMN "is_imposter" DROP DEFAULT;--> statement-breakpoint
-ALTER TABLE "idempotency_keys" ALTER COLUMN "response_body" SET DATA TYPE jsonb;--> statement-breakpoint
+ALTER TABLE "idempotency_keys" ALTER COLUMN "response_body" SET DATA TYPE jsonb USING "response_body"::jsonb;--> statement-breakpoint
 ALTER TABLE "idempotency_keys" ALTER COLUMN "created_at" SET DATA TYPE timestamp with time zone;--> statement-breakpoint
 ALTER TABLE "idempotency_keys" ALTER COLUMN "created_at" SET DEFAULT now();--> statement-breakpoint
 ALTER TABLE "idempotency_keys" ALTER COLUMN "expires_at" SET DATA TYPE timestamp with time zone;--> statement-breakpoint
 ALTER TABLE "kahoot_staging" ALTER COLUMN "team_id" DROP NOT NULL;--> statement-breakpoint
-ALTER TABLE "kahoot_staging" ALTER COLUMN "matched_by_admin" SET DATA TYPE boolean;--> statement-breakpoint
+ALTER TABLE "kahoot_staging" ALTER COLUMN "matched_by_admin" SET DATA TYPE boolean USING ("matched_by_admin" IS NOT NULL);--> statement-breakpoint
 ALTER TABLE "kahoot_staging" ALTER COLUMN "matched_by_admin" SET NOT NULL;--> statement-breakpoint
 ALTER TABLE "players" ALTER COLUMN "registered_at" SET DATA TYPE timestamp with time zone;--> statement-breakpoint
 ALTER TABLE "players" ALTER COLUMN "registered_at" SET DEFAULT now();--> statement-breakpoint
