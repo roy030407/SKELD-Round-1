@@ -17,8 +17,9 @@ export async function POST(req: Request) {
   try {
     const body = loginSchema.parse(await req.json())
     assertSameOrigin(req)
-    const ip = req.headers.get('x-forwarded-for') || 'ip'
-    await rateLimit(db, `login-staff:${ip}`, 10)
+    const ip = (req.headers.get('x-forwarded-for') || 'ip').split(',')[0].trim()
+    await rateLimit(db, `login-staff:user:${body.username}`, 15)
+    await rateLimit(db, `login-staff:ip:${ip}`, 200)
     
     const token = await db.transaction(async (tx) => {
       const [staff] = await tx.select().from(staffAccounts).where(eq(staffAccounts.username, body.username))

@@ -4,6 +4,7 @@ import { db } from '@/lib/db/client'
 import { players, teams } from '@/lib/db/schema'
 import { CIPHER_FRAGMENTS } from '@/lib/game/cipher-data'
 import { eq } from 'drizzle-orm'
+import { canEnterTask } from '@/lib/gating'
 
 /**
  * GET /api/tasks/2/state
@@ -15,6 +16,14 @@ export async function GET(req: NextRequest) {
     const session = await requireSession(req)
     if (!session.playerId || !session.teamId) {
       return NextResponse.json({ error: 'Not a player session' }, { status: 403 })
+    }
+
+    // This endpoint hands out the actual cipher text, so it needs the same
+    // gate as /submit - without it a team could read and pre-solve their
+    // fragments before Task 2 was opened.
+    const gate = await canEnterTask(session.teamId, 2)
+    if (!gate.allowed) {
+      return NextResponse.json({ error: gate.reason }, { status: 403 })
     }
 
     // Fragment assignment is by the player's position within their own team,

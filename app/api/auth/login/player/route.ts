@@ -16,8 +16,13 @@ export async function POST(req: Request) {
   try {
     const body = loginSchema.parse(await req.json())
     assertSameOrigin(req)
-    const ip = req.headers.get('x-forwarded-for') || 'ip'
-    await rateLimit(db, `login:${ip}`, 10)
+    const ip = (req.headers.get('x-forwarded-for') || 'ip').split(',')[0].trim()
+    // Every player at the venue shares one WiFi egress IP, so a tight
+    // per-IP cap locks out the whole room. The per-identity cap is what
+    // actually stops credential guessing; the per-IP cap is only a runaway
+    // -script backstop and has to be sized for ~150 people at once.
+    await rateLimit(db, `login:code:${body.playerCode}`, 10)
+    await rateLimit(db, `login:ip:${ip}`, 400)
     
     const token = await db.transaction(async (tx) => {
       const [player] = await tx.select().from(players).where(and(eq(players.playerCode, body.playerCode), eq(players.rollNumber, body.rollNumber)))

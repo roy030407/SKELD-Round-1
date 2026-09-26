@@ -17,8 +17,11 @@ export async function POST(req: Request) {
   try {
     const body = registerSchema.parse(await req.json())
     assertSameOrigin(req)
-    const ip = req.headers.get('x-forwarded-for') || 'ip'
-    await rateLimit(db, `register:${ip}`, 5)
+    const ip = (req.headers.get('x-forwarded-for') || 'ip').split(',')[0].trim()
+    // See the note in the player login route: 5/min per IP meant only the
+    // first five people on the venue WiFi could ever register.
+    await rateLimit(db, `register:roll:${body.rollNumber}`, 5)
+    await rateLimit(db, `register:ip:${ip}`, 400)
     
     const result = await db.transaction(async (tx) => {
       const [settings] = await tx.select().from(registrationSettings).where(eq(registrationSettings.id, 1))
@@ -35,12 +38,17 @@ export async function POST(req: Request) {
         
       const playerCode = await generatePlayerCode(tx, team.id)
       
+      // The first person to register for a team becomes its leader. Betting
+      // is leader-only, and nothing else ever set this flag, so without it
+      // no team could place a bet at all. Admin can reassign later via
+      // /api/admin/teams/[teamId]/leader.
       const [player] = await tx.insert(players).values({
         teamId: team.id,
         playerCode,
         firstName: body.firstName,
         rollNumber: body.rollNumber,
-        email: body.email
+        email: body.email,
+        isLeader: members.length === 0
       }).returning()
       
       await tx.insert(auditLog).values({

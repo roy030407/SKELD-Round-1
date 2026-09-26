@@ -6,7 +6,7 @@ import { rateLimit } from '../../../../lib/security/rate-limit'
 export async function GET(req: Request) {
   try {
     const ip = req.headers.get('x-forwarded-for') || 'ip'
-    await rateLimit(db, `team-lookup:${ip}`, 10)
+    await rateLimit(db, `team-lookup:${ip}`, 400)
     
     const url = new URL(req.url)
     const code = url.searchParams.get('code')
