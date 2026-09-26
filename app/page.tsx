@@ -108,6 +108,7 @@ export default function LandingPage() {
             </Card>
           </div>
           <div className="mt-16 flex flex-col items-center gap-4 opacity-50">
+            <img src="/branding/RoboticsClubNITW.webp" alt="Robotics Club NIT Warangal" className="h-16 w-16 object-contain" />
             <span className="font-orbitron text-xs tracking-widest text-gray-400">ROBOTICS CLUB NIT WARANGAL</span>
           </div>
         </section>
