@@ -51,8 +51,8 @@ export default function LandingPage() {
             26 September · 5 PM · NAB
           </p>
           <div className="mt-8">
-            <Link href="/check-in">
-              <Button size="default" variant="primary">Check In</Button>
+            <Link href="/login">
+              <Button size="default" variant="primary">Enter / Register</Button>
             </Link>
           </div>
         </section>
@@ -81,14 +81,16 @@ export default function LandingPage() {
           <TaskRail tasks={tasks} />
         </section>
 
-        {/* Check In CTA */}
+        {/* Entry CTA - check-in is now automatic (registering in person at the
+            venue IS check-in), so this no longer points at the old manual
+            check-in confirm page. */}
         <section className="w-full max-w-sm">
           <HoldToReveal duration={1500}>
             <Panel className="flex flex-col items-center gap-4 text-center">
               <StatusPill status="open" />
               <h3 className="font-rajdhani text-xl font-bold text-white">System Unlocked</h3>
-              <Link href="/check-in" className="w-full">
-                <Button variant="danger" className="w-full">Proceed to Check In</Button>
+              <Link href="/login" className="w-full">
+                <Button variant="danger" className="w-full">Enter the Ship</Button>
               </Link>
             </Panel>
           </HoldToReveal>
