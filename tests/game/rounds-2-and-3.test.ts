@@ -6,7 +6,6 @@ import {
   validateFragment,
   validateMasterSentence,
 } from '../../lib/game/cipher-data'
-import { LOGIC_GATE_STAGES } from '../../lib/game/logic-gates-data'
 
 describe('Cipher Data', () => {
   it('has exactly 6 fragments', () => {
@@ -42,48 +41,8 @@ describe('Cipher Data', () => {
   })
 })
 
-describe('Logic Gate Stages', () => {
-  it('has exactly 5 stages', () => {
-    expect(LOGIC_GATE_STAGES).toHaveLength(5)
-  })
-
-  it('Stage 0 AND: verify(A=1, B=1) = true', () => {
-    expect(LOGIC_GATE_STAGES[0].verify({ A: 1, B: 1 })).toBe(true)
-  })
-
-  it('Stage 0 AND: verify(A=1, B=0) = false', () => {
-    expect(LOGIC_GATE_STAGES[0].verify({ A: 1, B: 0 })).toBe(false)
-  })
-
-  it('Stage 1 NOR: verify(A=0, B=0) = true', () => {
-    expect(LOGIC_GATE_STAGES[1].verify({ A: 0, B: 0 })).toBe(true)
-  })
-
-  it('Stage 1 NOR: verify(A=1, B=0) = false', () => {
-    expect(LOGIC_GATE_STAGES[1].verify({ A: 1, B: 0 })).toBe(false)
-  })
-
-  it('Stage 2 XOR: verify(A=1, B=0) = true', () => {
-    expect(LOGIC_GATE_STAGES[2].verify({ A: 1, B: 0 })).toBe(true)
-  })
-
-  it('Stage 2 XOR: verify(A=1, B=1) = false', () => {
-    expect(LOGIC_GATE_STAGES[2].verify({ A: 1, B: 1 })).toBe(false)
-  })
-
-  it('Stage 3 NAND-AND: verify(A=0, B=1, C=1) = true', () => {
-    expect(LOGIC_GATE_STAGES[3].verify({ A: 0, B: 1, C: 1 })).toBe(true)
-  })
-
-  it('Stage 3 NAND-AND: verify(A=1, B=1, C=1) = false', () => {
-    expect(LOGIC_GATE_STAGES[3].verify({ A: 1, B: 1, C: 1 })).toBe(false)
-  })
-
-  it('Stage 4 Complex: verify(A=1, B=0, C=1, D=0) = true', () => {
-    expect(LOGIC_GATE_STAGES[4].verify({ A: 1, B: 0, C: 1, D: 0 })).toBe(true)
-  })
-
-  it('Stage 4 Complex: verify(A=0, B=0, C=1, D=0) = false (OR fails)', () => {
-    expect(LOGIC_GATE_STAGES[4].verify({ A: 0, B: 0, C: 1, D: 0 })).toBe(false)
-  })
-})
+// Task 3 (Bomb Defusal) no longer has an in-repo logic-gate implementation —
+// it was replaced with an external-link + admin-manual-entry flow (mirrors
+// Task 1's quiz), so lib/game/logic-gates-data.ts and its tests were removed.
+// See app/api/tasks/3/state and app/api/admin/bomb-defusal for the current
+// Task 3 implementation.

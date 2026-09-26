@@ -1,0 +1,1 @@
+ALTER TABLE "registration_settings" ADD COLUMN "bomb_defusal_link" text DEFAULT 'https://vedant-jadhav-23.github.io/BombDefusalTask/';
